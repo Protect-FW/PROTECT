@@ -1,0 +1,159 @@
+taxon,birth,death,ccp,source
+__TAXONOMIC_ROOT__,0.4321048942803776,0.35559898553480473,0.9973239038189533,computed
+Belgrandiellinae,1.9915524629721977,1.991502139815665,0.8537549407114624,computed
+Belgrandiella,1.9915524629721977,1.991502139815665,0.7589285714285714,from Belgrandiellinae (crown capture probability)
+Belgrandiella2,1.9915524629721977,1.991502139815665,0.0,from Belgrandiellinae (singleton)
+Graziana,1.9915524629721977,1.991502139815665,0.3939393939393939,from Belgrandiellinae (crown capture probability)
+Graziana2,1.9915524629721977,1.991502139815665,0.0,from Belgrandiellinae (singleton)
+Belgrandiinae,1.0000000282819324,1.0000000272819323,0.9514285714285714,computed
+Belgrandia,2.186194596953729,1.7562489059673174,0.9333333333333333,computed
+Belgrandia2,1.0000000282819324,1.0000000272819323,0.0,from Belgrandiinae (singleton)
+Dalmatinella,1.0000000282819324,1.0000000272819323,0.0,from Belgrandiinae (cherry)
+Martensamnicola,1.0000000282819324,1.0000000272819323,0.0,from Belgrandiinae (crown capture probability)
+Pauluccinella,1.0000000282819324,1.0000000272819323,0.0,from Belgrandiinae (singleton)
+Sardohoratia,1.0000000282819324,1.0000000272819323,0.0,from Belgrandiinae (cherry)
+Bullaregiinae,0.09649636994020418,0.0,0.84,computed
+Aghbalia ,0.09649636994020418,0.0,0.0,from Bullaregiinae (unsampled)
+Belgrandiellopsis,0.09649636994020418,0.0,1.0,from Bullaregiinae (cherry)
+Biserta,0.09649636994020418,0.0,0.0,from Bullaregiinae (singleton)
+Bullaregia,0.09649636994020418,0.0,0.0,from Bullaregiinae (singleton)
+Znassela,0.09649636994020418,0.0,0.0,from Bullaregiinae (unsampled)
+Caspiinae,0.5259143204337636,0.5259012582613412,0.8695652173913043,computed
+Andrusovia,0.5259143204337636,0.5259012582613412,0.0,from Caspiinae (unsampled)
+Clathrocaspia,0.5259143204337636,0.5259012582613412,0.0,from Caspiinae (crown capture probability)
+Erosiconcha,0.5259143204337636,0.5259012582613412,0.0,from Caspiinae (singleton)
+Graecoanatolica,0.6316611746566411,0.3968711607604561,0.8571428571428572,computed
+Tanousia,0.5259143204337636,0.5259012582613412,0.0,from Caspiinae (singleton)
+Ulskia,0.5259143204337636,0.5259012582613412,0.0,from Caspiinae (unsampled)
+Caucasopsiinae,0.4321048942803776,0.35559898553480473,0.7806122448979592,from __TAXONOMIC_ROOT__ (crown capture probability)
+Alagoniella,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Alfahariella,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Arganiella,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (singleton)
+Avenionia,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (singleton)
+Caucasogeyeria,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Caucasopsis,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Corbellaria,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (singleton)
+Hausdorfenia,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Imeretiopsis,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Istriana,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (cherry)
+Kartbelovia,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Kerkia,0.4321048942803776,0.35559898553480473,0.5909090909090908,from Caucasopsiinae (crown capture probability)
+Navalis,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Onubiella,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Pontohoratia,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Schapsugia,0.4321048942803776,0.35559898553480473,0.0,from Caucasopsiinae (unsampled)
+Horatiinae,0.5817043223643419,0.5138265068310925,0.9879518072289156,computed
+Adaniya,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Anadoludamnicola,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (cherry)
+Anagastina,0.5817043223643419,0.5138265068310925,0.4666666666666667,from Horatiinae (crown capture probability)
+Belgrandia3,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+Boetersiella,0.5817043223643419,0.5138265068310925,1.0,from Horatiinae (cherry)
+Bracenica,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Chondrobasis,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+Daphniola,0.5817043223643419,0.5138265068310925,0.4285714285714286,from Horatiinae (crown capture probability)
+Dicle,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Graecoarganiella,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Grossuana,2.025774067601897,1.3920816347068057,0.9061224489795918,computed
+Grossuana2,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+Horatia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (crown capture probability)
+Horatia2,0.0691415240676089,0.06914131538099912,1.0,computed
+Isimerope,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Kozanium,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Lerniana,0.5817043223643419,0.5138265068310925,0.5555555555555556,from Horatiinae (crown capture probability)
+Malaprespia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+OhridHoratiinae,0.8933378249755404,0.0,0.9771428571428571,computed
+Prespolitorea,0.5817043223643419,0.5138265068310925,1.0,from Horatiinae (cherry)
+Pseudamnicola2,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+Pseudoislamia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Pseudorientalia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (crown capture probability)
+Radomaniola,0.3513921344196994,0.0,0.9666666666666667,computed
+Sadleriana,0.2788985229047066,0.27878657392153233,0.8928571428571429,computed
+Sarajana,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Sheitanok,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (crown capture probability)
+Tefennia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+Torosia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Trichonia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Turrihoratia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (unsampled)
+Vinodolia,0.5817043223643419,0.5138265068310925,0.0,from Horatiinae (singleton)
+Hydrobiinae,0.1050678799067415,0.09112004796448946,0.989010989010989,computed
+Achaiohydrobia,0.1050678799067415,0.09112004796448946,0.0,from Hydrobiinae (unsampled)
+Adriohydrobia,0.1050678799067415,0.09112004796448946,0.0,from Hydrobiinae (singleton)
+Cariohydrobia,0.1050678799067415,0.09112004796448946,0.0,from Hydrobiinae (singleton)
+Ecrobia,0.15855764575627362,0.0,1.0,computed
+Hydrobia,0.11660857156468091,0.0,1.0,computed
+Hydrobia2,0.1050678799067415,0.09112004796448946,0.0,from Hydrobiinae (singleton)
+Peringia,0.1050678799067415,0.09112004796448946,0.0,from Hydrobiinae (singleton)
+Salenthydrobia,0.1050678799067415,0.09112004796448946,0.0,from Hydrobiinae (singleton)
+Islamiinae,0.15308230700301476,0.0,0.9658333333333333,computed
+Actenidia,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Alzoniella,0.16996891947493384,0.0,0.8187134502923976,computed
+Alzoniella2,0.15308230700301476,0.0,1.0,from Islamiinae (cherry)
+Aretiana,0.15308230700301476,0.0,0.0,from Islamiinae (singleton)
+Beatrix ,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Deganta,0.15308230700301476,0.0,0.0,from Islamiinae (singleton)
+Fessia,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Fissuria,0.15308230700301476,0.0,0.0,from Islamiinae (crown capture probability)
+Iberhoratia,0.15308230700301476,0.0,0.0,from Islamiinae (crown capture probability)
+Ifrania,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Islamia,0.2183536100146945,0.03236401318821793,0.9433962264150944,computed
+Maroccoarganiella,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Maroccohoratia,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Pseudavenionia,0.15308230700301476,0.0,0.0,from Islamiinae (singleton)
+Siuraniella,0.15308230700301476,0.0,0.0,from Islamiinae (unsampled)
+Spathogyna,0.15308230700301476,0.0,0.0,from Islamiinae (singleton)
+Tarraconia,0.15308230700301476,0.0,1.0,from Islamiinae (cherry)
+Mercuriinae,0.21974173651415238,0.0,0.9264367816091954,computed
+Mercuria,0.21974173651415238,0.0,0.9264367816091954,computed
+Navarrielinae,0.4321048942803776,0.35559898553480473,0.0,from __TAXONOMIC_ROOT__ (singleton)
+Navarriella,0.4321048942803776,0.35559898553480473,0.0,from Navarrielinae (singleton)
+Nymphophilinae,0.23313702173608739,0.0,0.9935581659719591,computed
+Cincinnatia ,0.23313702173608739,0.0,0.0,from Nymphophilinae (singleton)
+Floridobia,0.23313702173608739,0.0,0.5769230769230769,from Nymphophilinae (crown capture probability)
+Marstonia,0.5343283722808306,0.0,0.8571428571428572,computed
+Notogillia,0.23313702173608739,0.0,0.0,from Nymphophilinae (singleton)
+Pyrgulopsis,0.24392762136956417,0.0,0.9938221864088101,computed
+Rhapinema,0.23313702173608739,0.0,0.0,from Nymphophilinae (singleton)
+Spilochlamys,0.23313702173608739,0.0,0.0,from Nymphophilinae (crown capture probability)
+Stiobia,0.23313702173608739,0.0,0.0,from Nymphophilinae (unsampled)
+Pontobelgrandiellinae,1.0000000282819324,1.0000000272819323,0.8836363636363637,computed
+Balkanica,1.0000000282819324,1.0000000272819323,0.0,from Pontobelgrandiellinae (unsampled)
+Balkanospeum,1.0000000282819324,1.0000000272819323,0.0,from Pontobelgrandiellinae (unsampled)
+Cavernisa,1.0000000282819324,1.0000000272819323,0.0,from Pontobelgrandiellinae (singleton)
+Devetakia,1.0000000282819324,1.0000000272819323,0.0,from Pontobelgrandiellinae (unsampled)
+Devetakiola,1.0000000282819324,1.0000000272819323,0.0,from Pontobelgrandiellinae (singleton)
+Pontobelgrandiella,6.331612157968254,6.330640623615246,0.8333333333333334,computed
+Stoyanovia,1.0000000282819324,1.0000000272819323,0.0,from Pontobelgrandiellinae (singleton)
+Pseudamnicolinae,0.24451580408395102,0.0,0.9782857142857143,computed
+Corrosella,0.1354486588566102,0.0,0.9889196675900277,computed
+Diegus,0.24451580408395102,0.0,0.0,from Pseudamnicolinae (singleton)
+Pseudamnicola,0.41026744558481876,0.0,0.9577572964669738,computed
+Pyrgulinae,1.0000000282819324,1.0000000272819323,0.9642857142857143,computed
+Chilopyrgula,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Clessiniola,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Dianella,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (cherry)
+Falsipyrgula,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Ginaia,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Laevicaspia,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (crown capture probability)
+Micropyrgula,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Neofossarulus,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Ochridopyrgula,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Pyrgohydrobia,2.039625837003293,1.0055569665831674,1.0,computed
+Pyrgorientalia,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Pyrgula,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Stankovicia,1.0000000282819324,1.0000000272819323,1.0,from Pyrgulinae (cherry)
+Turricaspia,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Xestopyrgula,1.0000000282819324,1.0000000272819323,0.0,from Pyrgulinae (singleton)
+Shadiniinae,0.19407538022182114,0.1940744606325905,0.9,computed
+Intermaria,0.19407538022182114,0.1940744606325905,1.0,from Shadiniinae (cherry)
+Persipyrgula,0.19407538022182114,0.1940744606325905,0.0,from Shadiniinae (singleton)
+Shadinia,0.19407538022182114,0.1940744606325905,0.0,from Shadiniinae (cherry)
+Subfamily1,0.4321048942803776,0.35559898553480473,0.7589285714285714,from __TAXONOMIC_ROOT__ (crown capture probability)
+Aetis,0.4321048942803776,0.35559898553480473,0.0,from Subfamily1 (unsampled)
+Agrafia,0.4321048942803776,0.35559898553480473,0.0,from Subfamily1 (singleton)
+Colchiella,0.4321048942803776,0.35559898553480473,0.0,from Subfamily1 (unsampled)
+Hauffenia,0.4321048942803776,0.35559898553480473,0.37254901960784315,from Subfamily1 (crown capture probability)
+Sataplia,0.4321048942803776,0.35559898553480473,0.0,from Subfamily1 (unsampled)
+Sitnikovia,0.4321048942803776,0.35559898553480473,0.0,from Subfamily1 (unsampled)
+Tschernomorica,0.4321048942803776,0.35559898553480473,0.7,from Subfamily1 (crown capture probability)
+Subfamily2,0.4321048942803776,0.35559898553480473,1.0,from __TAXONOMIC_ROOT__ (cherry)
+Probythinella,0.4321048942803776,0.35559898553480473,1.0,from Subfamily2 (cherry)

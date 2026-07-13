@@ -1,0 +1,574 @@
+---
+title: "Data preparation for Hydrobiidae extinction risk"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+Raw observations were transformed into species-level predictors through a combination of automated workflows and spatial data extraction (Figure 1). In total, we compiled 22 features describing geography, hydrology, habitat type, climate, anthropogenic impact, systematic classification, body size, and evolutionary distinctivness.
+
+### Load packages
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r packages, message = FALSE}
+library(ape)
+library(picante)
+library(terra)
+terra::terraOptions(progress = 0) # Suppress progress bar
+library(geodata)
+library(IUCNN)
+```
+
+<br>
+
+### Helper functions
+
+Function to check whether species names are identical in the file with the IUCN categories and the features. 
+
+```{r checkspecies}
+checkSpecies <- function(labels, feat) {
+  feat_species_names <- sort(unique(feat$species))
+  miss_labels <- sort(labels$species[labels$species %notin% feat_species_names])
+  label_issue <- length(miss_labels) > 0
+  if (label_issue) {
+    cat("Missing from labels: ", miss_labels)
+  }
+  miss_feat <- sort(feat_species_names[feat_species_names %notin% labels$species])
+  feat_issue <- length(miss_feat) > 0
+  if (feat_issue) {
+    cat("Missing from feature: ", miss_feat)
+  }
+  if (!feat_issue && !label_issue) {
+    cat("OK")
+  }
+}
+```
+
+<br>
+
+### Load IUCN categories
+
+Extinction risk categories were obtained from the IUCN Red List (v. 2025-2). Species are classified as Least Concern (LC, 70), Near Threatened (NT, 63), Vulnerable (VU, 133), Endangered (EN, 65), Critically Endangered (CR, 89), Data Deficient (DD, 81) and Not Evaluated (NE, 375). 
+
+```{r load labels}
+iucn_labels <- read.table(file.path("..", "raw_data", "IUCN_labels.txt"),
+                         header = TRUE, sep = "\t")
+
+# Remove whitespaces
+iucn_labels$species <- gsub(" ", "", iucn_labels$species)
+
+# Order alphabetically
+iucn_labels <- iucn_labels[order(iucn_labels$species), ]
+```
+
+<br>
+
+### Intitialize data.frame for features
+
+All raw data will be aggregated into a single data.frame called `Features`, which will be the input for predicting contemporary extinction risk with the IUCNN package.
+
+```{r Features}
+# We have 21 continuous features
+num_cont_features <- 21
+features <- data.frame(species = iucn_labels$species,
+                       matrix(NA_real_,
+                              ncol = num_cont_features,
+                              nrow = length(iucn_labels$species))) 
+```
+
+<br>
+
+### Initialize feature scaling
+
+All predictor variables were standardized (centered to zero and scaled to a standard deviation of 1) to ensure comparability across them and to stabilize variance during model training. We create a data.frame called `FeatureStats` where we keep track of the mean ad standard deviation of each continuous feature to display the original scale in the partial dependence plots.
+
+```{r scale}
+feature_stats <- data.frame(matrix(NA_real_,
+                                   ncol = num_cont_features,
+                                   nrow = 2)) 
+row.names(feature_stats) <- c("Mean", "SD")
+
+# Create counter to add features one by one
+counter <- 1
+```
+
+<br>
+
+### Geographic descriptors
+
+Geographic descriptors were calculated using the IUCNN R package for the R v.4.6.0 statistical programming language (R Development Core Team 2025). These included the number of occurrences, the number of unique occurrences, the mean latitude and longitude, latitudinal and longitudinal range, the extent of occurrence (EOO), and the area of occupancy (AOO). These variables were computed and aggregated automatically at the species level within the IUCNN workflow.
+
+```{r geographic descriptors}
+all_points <- read.table(file.path("..", "raw_data", "all_points.csv"),
+                         header = TRUE, sep = ",")
+
+# Remove whitespaces
+all_points$species <- gsub(" ", "", all_points$species)
+
+# Check match of species names
+checkSpecies(iucn_labels, all_points)
+
+# Calculate geographic features
+geo_feat <- iucnn_geography_features(x = all_points,
+                                     lon = "lon", lat = "lat")
+
+# Use number of occurrences, the number of unique occurrences, 
+# the mean latitude and longitude, latitudinal and longitudinal range, 
+# the extent of occurrence (EOO), and the area of occupancy (AOO). 
+# Convert to data.frame instead of tibble for easier handling
+geo_feat <- as.data.frame(geo_feat[, c("tot_occ", "uni_occ",
+                                       "mean_lat", "mean_lon",
+                                       "lat_range", "lon_range",
+                                       "eoo", "aoo")])
+
+# z-scale geographic features
+for(i in 1:ncol(geo_feat)) {
+  feature_stats[1, counter] <- mean(geo_feat[, i])
+  feature_stats[2, counter] <- sd(geo_feat[, i])
+  colnames(feature_stats)[counter] <- colnames(geo_feat)[i]
+  colnames(features)[counter + 1] <- colnames(geo_feat)[i]
+  features[, counter + 1] <- (geo_feat[, i] - feature_stats[1, counter]) / 
+    feature_stats[2, counter]
+  counter <- counter + 1
+}
+```
+
+<br>
+
+### Elevation
+
+Elevation data were sourced from the Global Multi-Resolution Terrain Elevation Data 2010 (mn30_grd layer; Earth Resources Observation And Science (EROS) Center 2017) and extracted from the coordinates in QGIS v.3.18.1 (QGIS Development Team 2023).
+
+```{r elevation}
+elevation <- read.table(file.path("..", "raw_data", "elevation.csv"),
+                        header = TRUE, sep = ",")
+
+# Remove whitespaces
+elevation$species <- gsub(" ", "", elevation$species)
+
+# Check match of species names
+checkSpecies(iucn_labels, elevation)
+
+# Aggregate by species mean
+mean_elevation <- aggregate(elevation ~ species,
+                            data = elevation,
+                            FUN = "mean")
+
+# z-scale
+feature_stats[1, counter] <- mean(mean_elevation$elevation)
+feature_stats[2, counter] <- sd(mean_elevation$elevation)
+colnames(feature_stats)[counter] <- "elevation"
+colnames(features)[counter + 1] <- "elevation"
+features[, counter + 1] <- (mean_elevation$elevation - feature_stats[1, counter]) /
+  feature_stats[2, counter]
+counter <- counter + 1
+```
+
+<br>
+
+### Human footprint
+
+Average Human Footprint (Sanderson et al. 2002) scores per species were calculated for 2009, as most IUCN assessments were conducted during that year.
+
+```{r download footprint}
+# Create directory to where we download human footprint
+footprint_dir <- file.path("..", "raw_data", "human_footprint")
+dir.create(path = footprint_dir, showWarnings = FALSE)
+
+# Download human footprint for the year 2009
+foot_2009 <- geodata::footprint(year = 2009, path = footprint_dir)
+```
+
+We extract the human footprint using a 2.5 km buffer around the coordinates of each locality. The human footprint should average the impact in the surroundings of the locality.
+
+```{r extract footprint, message=FALSE, warning=FALSE, results="hide"}
+# Convert coordinates to spatial points object in WGS84 format
+points_sv <- vect(all_points[, 3:2], crs = "epsg:4326")
+
+# Create a buffer around points.
+points_buf <- buffer(points_sv, 2500)
+
+foot_buf <- extract(foot_2009, points_buf, fun = mean)
+```
+
+Finally, we aggregate the locality-specific human footprint by species and add it to the `Features` data.frame.
+
+```{r footprint}
+foot_species <- aggregate(foot_buf[, 2] ~ all_points$species,
+                          FUN = mean)
+
+# z-scale
+feature_stats[1, counter] <- mean(foot_species[, 2])
+feature_stats[2, counter] <- sd(foot_species[, 2])
+colnames(feature_stats)[counter] <- "footprint"
+colnames(features)[counter + 1] <- "footprint"
+features[, counter + 1] <- scale(foot_species[, 2])
+counter <- counter + 1
+```
+
+<br>
+
+### Hydrology data
+
+Hydrology data were derived from the HydroBASINS dataset (Lehner & Grill 2013) at resolution level 12 using QGIS v.3.18.1 (QGIS Development Team 2023). Extracted variables included sub-basin area, distance to the nearest downstream sink, upstream catchment area, and river order. These variables were extracted at the occurrence level and subsequently aggregated per species (mean values).
+
+```{r hydrology}
+basin <- read.table(file.path("..", "raw_data", "hydrobasins.csv"),
+                    header = TRUE, sep = ",")
+
+# Remove whitespaces
+basin$species <- gsub(" ", "", basin$species)
+
+# Check match of species names
+checkSpecies(iucn_labels, basin)
+
+# Ohrid species are in lake, spring, or both
+only_ohrid <- c(
+  "Chilopyrgula_sturanyi",
+  "Ginaia_munda",
+  "Gocea_ohridana",
+  "Lyhnidia_hadzii",
+  "Lyhnidia_karamani",
+  "Lyhnidia_stankovici",
+  "Lyhnidia_sublitoralis",
+  "Micropyrgula_stankovici",
+  "Neofossarulus_stankovici",
+  "Ohridohauffenia_depressa",
+  "Ohridohauffenia_minuta",
+  "Ohridohauffenia_rotonda",
+  "Ohridohauffenia_sublitoralis",
+  "Ohridohoratia_carinata",
+  "Ohridohoratia_sturanyi",
+  "Ohrigocea_karevi",
+  "Ohrigocea_miladinovorum",
+  "Ohrigocea_ornata",
+  "Ohrigocea_samuili",
+  "Pseudohoratia_brusinae",
+  "Pseudohoratia_lacustris",
+  "Pseudohoratia_ochridana",
+  "Pyrgohydrobia_grochmalickii",
+  "Stankovicia_pavlovici",
+  "Stankovicia_wagneri",
+  "Xestopyrgula_dybowskii"
+)
+only_springs <- c(
+  "Lyhnidia_gjorgjevici",
+  "Pyrgohydrobia_sanctinaumi",
+  "Ohridohauffenia_sanctinaumi",
+  "Zaumia_kusceri",
+  "Zaumia_sanctizaumi"
+)
+both <- c(
+  "Ochridopyrgula_macedonica",
+  "Ohridohoratia_polinskii",
+  "Ohridohoratia_pygmaea",
+  "Ohrigocea_stankovici"
+)
+
+# Aggregate by taking the sum of basin area for each species
+is_dupl <- duplicated(basin[, c("species", "hybas_id")])
+unique_basin <- basin[!is_dupl, ]
+sum_area <- aggregate(subbasin_area ~ species,
+                      data = unique_basin,
+                      FUN = "sum")
+
+# Truncate area for Caspian species
+caspian_species <- c("Andrusovia_dybowskii",
+                    "Clathrocaspia_brotzkajae",
+                    "Clathrocaspia_gaillardi",   
+                    "Clathrocaspia_gmelinii",
+                    "Clathrocaspia_isseli",
+                    "Clathrocaspia_pallasii",    
+                    "Ecrobia_grimmi",
+                    "Laevicaspia_abichi",
+                    "Laevicaspia_caspia",        
+                    "Laevicaspia_cincta",
+                    "Laevicaspia_conus",
+                    "Laevicaspia_derzhavini",    
+                    "Laevicaspia_kolesnikoviana",
+                    "Laevicaspia_kowalewskii",
+                    "Laevicaspia_obventicia",
+                    "Turricaspia_sp.",
+                    "Ulskia_schorygni",          
+                    "Ulskia_ulskii")
+sum_area$subbasin_area[sum_area$species %in% caspian_species] <- 60000
+
+# Aggregate by species mean
+mean_basin <- aggregate(basin[, c("distance_sink", "upstream_area", "river_order")],
+                        by = list(basin$species),
+                        FUN = "mean")
+
+ohrid <- basin[which(basin$hybas_id == 2129005261)[1],
+               c("distance_sink", "upstream_area", "river_order", "subbasin_area")]
+spring <- basin[which(basin$hybas_id == 2120623161)[1],
+                c("distance_sink", "upstream_area", "river_order", "subbasin_area")]
+
+
+# Pyrgulopsis from the Rocky Mountains, draining to the Gulf of Mexico. 
+# This is 3x larger than all other species. 
+# Use the 3rd highest value for numerical stability
+mean_basin$distance_sink[features$species == "Pyrgulopsis_blainica"] <- 
+  sort(mean_basin$distance_sink, decreasing = TRUE)[3]
+mean_basin$distance_sink[features$species == "Pyrgulopsis_bedfordensis"] <- 
+  sort(mean_basin$distance_sink, decreasing = TRUE)[3]
+
+# # Truncate upstream area for Caspian species
+mean_basin$upstream_area[mean_basin$Group.1 %in% caspian_species] <- 500000
+
+mean_basin <- data.frame(mean_basin,
+                         subbasin_area = sum_area$subbasin_area)
+
+mean_basin[mean_basin$Group.1 %in% only_ohrid, 2:5] <- ohrid
+mean_basin[mean_basin$Group.1 %in% only_springs, 2:5] <- spring
+mean_basin[mean_basin$Group.1 %in% both, "distance_sink"] <- 
+  mean(c(ohrid$distance_sink, spring$distance_sink))
+mean_basin[mean_basin$Group.1 %in% both, "upstream_area"] <- 
+  mean(c(ohrid$upstream_area, spring$upstream_area))
+mean_basin[mean_basin$Group.1 %in% both, "river_order"] <- 
+  mean(c(ohrid$river_order, spring$river_order))
+mean_basin[mean_basin$Group.1 %in% both, "subbasin_area"] <- 
+  sum(c(ohrid$subbasin_area, spring$subbasin_area))
+
+mean_basin$upstream_area <- log(mean_basin$upstream_area)
+mean_basin$subbasin_area <- log(mean_basin$subbasin_area)
+
+# z-scale basin characteristics
+for(i in 2:ncol(mean_basin)) {
+  feature_stats[1, counter] <- mean(mean_basin[, i])
+  feature_stats[2, counter] <- sd(mean_basin[, i])
+  colnames(feature_stats)[counter] <- colnames(mean_basin)[i]
+  colnames(features)[counter + 1] <- colnames(mean_basin)[i]
+  features[, counter + 1] <- (mean_basin[, i] - feature_stats[1, counter]) / 
+    feature_stats[2, counter]
+  counter <- counter + 1
+}
+```
+
+<br>
+
+### Climate
+
+Hydroclimatic variables, representing Annual Mean Upstream Temperature, Upstream Temperature Annual Range, Annual Upstream Precipitation, and Upstream Precipitation Seasonality, were obtained from EarthEnv and HydroSHEDS repositories (Lehner et al. 2008; Hengl et al. 2014; Domisch et al. 2015).
+
+```{r climate}
+climate <- read.table(file.path("..", "raw_data", "climate.csv"),
+                      header = TRUE, sep = ',')
+
+# Remove whitespaces
+climate$species <- gsub(" ", "", climate$species)
+
+# Check match of species names
+checkSpecies(iucn_labels, climate)
+
+# Mean climate per species
+mean_climate <- aggregate(climate[, 4:8],
+                          by = list(climate$species),
+                          FUN = "mean")
+
+# M. ozarkensis is from the Missisipi river. 
+# It has a 10x higher HyClim_12 value than all other species. 
+# Use the 2nd highest value for numerical stability
+mean_climate$hyclim_12[mean_climate$Group.1 == "Marstonia_ozarkensis"] <- sort(
+  mean_climate$hyclim_12, decreasing = TRUE)[2]
+mean_climate$hyclim_12 <- log(mean_climate$hyclim_12)
+
+# z-scale mean climate
+for(i in 2:ncol(mean_climate)) {
+  feature_stats[1, counter] <- mean(mean_climate[, i])
+  feature_stats[2, counter] <- sd(mean_climate[, i])
+  colnames(feature_stats)[counter] <- colnames(mean_climate)[i]
+  colnames(features)[counter + 1] <- colnames(mean_climate)[i]
+  features[, counter + 1] <- (mean_climate[, i] - feature_stats[1, counter]) /
+    feature_stats[2, counter]
+  counter <- counter + 1
+}
+```
+
+<br>
+
+### Habitat
+
+Habitat classification was performed using the IUCN Red List Habitats Classification Scheme (v. 2025-2), yielding initially ten habitat types, which were subsequently reduced to six by merging similar and underrepresented categories to improve model robustness.
+
+```{r habitat}
+habitat <- read.table(file.path("..", "raw_data", "habitat.csv"),
+                      header = TRUE, sep = ",")
+
+# Remove whitespaces
+habitat$species <- gsub(" ", "", habitat$species)
+
+# Check match of species names
+checkSpecies(iucn_labels, habitat)
+
+habitat$habitat <- as.character(habitat$habitat)
+
+# Replace IUCN habitat categories by meaningful names
+habitat$habitat[habitat$habitat == "5.1"] <- "rivers"
+habitat$habitat[habitat$habitat == "5.14"] <- "brackish_lakes"
+habitat$habitat[habitat$habitat == "5.16"] <- "brackish_pools"
+habitat$habitat[habitat$habitat == "5.18"] <- "subterranean_systems"
+habitat$habitat[habitat$habitat == "5.5"] <- "freshwater_lakes"
+habitat$habitat[habitat$habitat == "5.9"] <- "springs"
+
+habitat <- habitat[order(habitat$species), ]
+
+# Check if each habitat category is well represented across the IUCN categories
+table(habitat$habitat, iucn_labels$IUCN)[, c("DD", "NE", "LC", "NT", "VU", "EN", "CR")]
+
+# One-hot encoding for habitat
+habitat_ohe <- model.matrix(~ habitat - 1, habitat)
+colnames(habitat_ohe) <- gsub("habitat", "", colnames(habitat_ohe)) 
+```
+
+<br>
+
+### Systematic
+
+Systematic classification was resolved to the subfamily level based on the global Hydrobiidae phylogeny (Delicado et al. 2024), supplemented with MolluscaBase and additional phylogenetic studies for missing genera. Subfamilies containing few species or consisting entirely of unassessed species were merged with their closest phylogenetic relative.
+
+```{r systematic}
+systematic <- read.table(file.path("..", "raw_data", "systematics.csv"),
+                       header = TRUE, sep = ",")
+
+# Remove whitespaces
+systematic$species <- gsub(" ", "", systematic$species)
+systematic <- systematic[order(systematic$species), ]
+
+# Check match of species names
+checkSpecies(iucn_labels, systematic)
+
+# Check if each subfamily is well represented across the IUCN categories
+table(systematic$subfamily, iucn_labels$IUCN)
+
+systematic$subfamily[systematic$subfamily == "Pontobelgrandiellinae"] <- 
+  "Pontobelgrandiellinae_Bullaregiinae"
+systematic$subfamily[systematic$subfamily == "Bullaregiinae"] <- 
+  "Pontobelgrandiellinae_Bullaregiinae"
+systematic$subfamily[systematic$subfamily == "Islamiinae"] <- 
+  "Islamiinae_Navarrielinae"
+systematic$subfamily[systematic$subfamily == "Navarrielinae"] <- 
+  "Islamiinae_Navarrielinae"
+systematic$subfamily[systematic$subfamily == "Pyrgulinae"] <- 
+  "Pyrgulinae_Shadiniinae"
+systematic$subfamily[systematic$subfamily == "Shadiniinae"] <- 
+  "Pyrgulinae_Shadiniinae"
+systematic$subfamily[systematic$subfamily == "Subfamily1"] <- 
+  "Unnamed_Subfamily"
+systematic$subfamily[systematic$subfamily == "Subfamily2"] <- 
+  "Unnamed_Subfamily"
+
+table(systematic$subfamily, iucn_labels$IUCN)
+
+# One-hot encoded systematics
+systematic_ohe <- model.matrix(~ subfamily - 1, systematic)
+colnames(systematic_ohe) <- gsub("subfamily", "", colnames(systematic_ohe))
+```
+
+<br>
+
+### Body size
+
+```{r bodysize}
+size <- read.table(file.path("..", "raw_data", "size.csv"),
+                   header = TRUE, sep = "\t")
+
+# Remove whitespaces
+size$species <- gsub(" ", "", size$species)
+
+# Check match of species names
+checkSpecies(iucn_labels, size)
+
+# Mean size per species
+mean_size <- aggregate(size ~ species, data = size, FUN = "mean")
+
+# z-scale
+feature_stats[1, counter] <- mean(mean_size$size)
+feature_stats[2, counter] <- sd(mean_size$size)
+colnames(feature_stats)[counter] <- "size"
+colnames(features)[counter + 1] <- "size"
+features[, counter + 1] <- (mean_size$size - feature_stats[1, counter]) /
+  feature_stats[2, counter]
+counter <- counter + 1
+```
+
+<br>
+
+### Evolutionary distinctivness
+
+Evolutionary distinctiveness (ED) was calculated to represent species’ contribution to phylogenetic diversity (Redding & Mooers, 2006). We used the phylogeny of Delicado et al. (2024), covering approximately 45% of species, and incorporated missing taxa using the stochastic polytomy resolver TACT (Chang et al., 2020), which adds missing species based on their hierarchical taxonomic information and the birth-death process. The R package picante (Kembel et al., 2010) was then used to calculate ED values for all species according to the algorithm of Isaac et al. (2007). 
+```{r ed}
+tree <- read.tree(file.path("..", "raw_data",
+                            "Hydrobiidae_tacted.newick.reproduce.tre"))
+
+# Remove quotes around species names put there by dendropy (dependency TACT).
+tree$tip.label <- gsub("'", "", tree$tip.label)
+
+# ED algorithm of Isaac et al. (2007)
+ed <- evol.distinct(tree, type = "fair.proportion")
+
+# z-scale
+feature_stats[1, counter] <- mean(ed$w)
+feature_stats[2, counter] <- sd(ed$w)
+colnames(feature_stats)[counter] <- "ed"
+colnames(features)[counter + 1] <- "ed"
+features[, counter + 1] <- (ed$w - feature_stats[1, counter]) /
+  feature_stats[2, counter]
+counter <- counter + 1
+```
+
+<br>
+
+### Check for multicollinearity
+
+We assessed all predictors for multicollinearity, defined as an absolute Pearson’s correlation coefficient greater than 0.7, because high collinearity can reduce model robustness and impair interpretation of predictor importance and effects. Consequently, we omitted mean latitude, longitudinal range, number of unique and total occurrences, extent of occurrence, Upstream Temperature Annual Range, and sub-basin area.
+
+```{r combine}
+# Combine continuous features, habitat, and systematics
+features <- cbind(features, habitat_ohe, systematic_ohe)
+```
+
+```{r collinearity}
+# Index of species that are not data deficient or not evaluated
+evaluated <- iucn_labels$IUCN %notin% c("NE", "DD")
+
+# Print correlation strength for all feature pairs with |r| > 0.7
+collinearity <- cor(features[evaluated, 2:22])
+diag(collinearity) <- 0
+colin_issue <- apply(collinearity, 2, function(x) any(abs(x) > 0.7))
+round(collinearity[colin_issue, colin_issue], 2)
+
+# Keep only features without high collinearity
+not_collinear <- colnames(features) %notin% c("tot_occ", "uni_occ", "eoo",
+                                              "mean_lat", "lon_range",
+                                              "subbasin_area", "hyclim_05")
+features <- features[, not_collinear]
+```
+
+
+
+Write labels, features, and feature z-scale statistics into a seperate directory for running the IUCNN pipeline.
+```{r write}
+input_path <- file.path("..", "IUCNN_input")
+dir.create(path = input_path, showWarnings = FALSE)
+
+write.table(iucn_labels, file.path(input_path, "iucn_labels.txt"),
+            sep = "\t", row.names = FALSE)
+
+write.table(features, file.path(input_path, "features.txt"),
+            sep = "\t", row.names = FALSE)
+
+write.table(feature_stats, file.path(input_path, "feature_stats.txt"),
+            sep = "\t", row.names = TRUE)
+```
+
+
+
+```{r}
+print(sessionInfo(), locale = FALSE)
+```
+
