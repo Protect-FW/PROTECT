@@ -1,6 +1,6 @@
 # Automated Red List assessment reveals hidden extinction risk in one of the world's most diverse freshwater invertebrate families
 
-This repository contains the reproducible analysis for the manuscript on Hydrobiidae extinction risk. The main analysis is [here](https://protect-fw.github.io/Protect/extinction_risk.html) and contains all steps and figures.
+This repository contains the reproducible analysis for the manuscript on Hydrobiidae extinction risk. The main analysis is [here](https://protect-fw.github.io/PROTECT/extinction_risk.html) and contains all steps and figures.
 
 The folders of this repository contain all files needed to reproduce the results of the manuscript.
 
