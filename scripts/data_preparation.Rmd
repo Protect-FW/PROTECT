@@ -16,8 +16,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r packages, message = FALSE}
-library(ape)
-library(picante)
 library(terra)
 terra::terraOptions(progress = 0) # Suppress progress bar
 library(geodata)
@@ -56,7 +54,7 @@ checkSpecies <- function(labels, feat) {
 Extinction risk categories were obtained from the IUCN Red List (v. 2025-2). Species are classified as Least Concern (LC, 70), Near Threatened (NT, 63), Vulnerable (VU, 133), Endangered (EN, 65), Critically Endangered (CR, 89), Data Deficient (DD, 81) and Not Evaluated (NE, 375). 
 
 ```{r load labels}
-iucn_labels <- read.table(file.path("..", "raw_data", "IUCN_labels.txt"),
+iucn_labels <- read.table(file.path("..", "raw_data", "iucn_labels.txt"),
                          header = TRUE, sep = "\t")
 
 # Remove whitespaces
@@ -73,8 +71,8 @@ iucn_labels <- iucn_labels[order(iucn_labels$species), ]
 All raw data will be aggregated into a single data.frame called `Features`, which will be the input for predicting contemporary extinction risk with the IUCNN package.
 
 ```{r Features}
-# We have 21 continuous features
-num_cont_features <- 21
+# We have 20 continuous features
+num_cont_features <- 20
 features <- data.frame(species = iucn_labels$species,
                        matrix(NA_real_,
                               ncol = num_cont_features,
@@ -492,31 +490,6 @@ feature_stats[2, counter] <- sd(mean_size$size)
 colnames(feature_stats)[counter] <- "size"
 colnames(features)[counter + 1] <- "size"
 features[, counter + 1] <- (mean_size$size - feature_stats[1, counter]) /
-  feature_stats[2, counter]
-counter <- counter + 1
-```
-
-<br>
-
-### Evolutionary distinctivness
-
-Evolutionary distinctiveness (ED) was calculated to represent species’ contribution to phylogenetic diversity (Redding & Mooers, 2006). We used the phylogeny of Delicado et al. (2024), covering approximately 45% of species, and incorporated missing taxa using the stochastic polytomy resolver TACT (Chang et al., 2020), which adds missing species based on their hierarchical taxonomic information and the birth-death process. The R package picante (Kembel et al., 2010) was then used to calculate ED values for all species according to the algorithm of Isaac et al. (2007). 
-```{r ed}
-tree <- read.tree(file.path("..", "raw_data",
-                            "Hydrobiidae_tacted.newick.reproduce.tre"))
-
-# Remove quotes around species names put there by dendropy (dependency TACT).
-tree$tip.label <- gsub("'", "", tree$tip.label)
-
-# ED algorithm of Isaac et al. (2007)
-ed <- evol.distinct(tree, type = "fair.proportion")
-
-# z-scale
-feature_stats[1, counter] <- mean(ed$w)
-feature_stats[2, counter] <- sd(ed$w)
-colnames(feature_stats)[counter] <- "ed"
-colnames(features)[counter + 1] <- "ed"
-features[, counter + 1] <- (ed$w - feature_stats[1, counter]) /
   feature_stats[2, counter]
 counter <- counter + 1
 ```

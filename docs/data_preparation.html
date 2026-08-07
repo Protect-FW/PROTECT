@@ -361,9 +361,7 @@ hydrology, habitat type, climate, anthropogenic impact, systematic
 classification, body size, and evolutionary distinctivness.</p>
 <div id="load-packages" class="section level3">
 <h3>Load packages</h3>
-<pre class="r"><code>library(ape)
-library(picante)
-library(terra)
+<pre class="r"><code>library(terra)
 terra::terraOptions(progress = 0) # Suppress progress bar
 library(geodata)
 library(IUCNN)</code></pre>
@@ -398,7 +396,7 @@ with the IUCN categories and the features.</p>
 Threatened (NT, 63), Vulnerable (VU, 133), Endangered (EN, 65),
 Critically Endangered (CR, 89), Data Deficient (DD, 81) and Not
 Evaluated (NE, 375).</p>
-<pre class="r"><code>iucn_labels &lt;- read.table(file.path(&quot;..&quot;, &quot;raw_data&quot;, &quot;IUCN_labels.txt&quot;),
+<pre class="r"><code>iucn_labels &lt;- read.table(file.path(&quot;..&quot;, &quot;raw_data&quot;, &quot;iucn_labels.txt&quot;),
                          header = TRUE, sep = &quot;\t&quot;)
 
 # Remove whitespaces
@@ -413,8 +411,8 @@ iucn_labels &lt;- iucn_labels[order(iucn_labels$species), ]</code></pre>
 <p>All raw data will be aggregated into a single data.frame called
 <code>Features</code>, which will be the input for predicting
 contemporary extinction risk with the IUCNN package.</p>
-<pre class="r"><code># We have 21 continuous features
-num_cont_features &lt;- 21
+<pre class="r"><code># We have 20 continuous features
+num_cont_features &lt;- 20
 features &lt;- data.frame(species = iucn_labels$species,
                        matrix(NA_real_,
                               ncol = num_cont_features,
@@ -522,6 +520,7 @@ dir.create(path = footprint_dir, showWarnings = FALSE)
 
 # Download human footprint for the year 2009
 foot_2009 &lt;- geodata::footprint(year = 2009, path = footprint_dir)</code></pre>
+<pre><code>## Cached as: ../raw_data/human_footprint/landuse/wildareas-v3-2009-human-footprint_geo.tif</code></pre>
 <p>We extract the human footprint using a 2.5 km buffer around the
 coordinates of each locality. The human footprint should average the
 impact in the surroundings of the locality.</p>
@@ -756,12 +755,12 @@ habitat &lt;- habitat[order(habitat$species), ]
 table(habitat$habitat, iucn_labels$IUCN)[, c(&quot;DD&quot;, &quot;NE&quot;, &quot;LC&quot;, &quot;NT&quot;, &quot;VU&quot;, &quot;EN&quot;, &quot;CR&quot;)]</code></pre>
 <pre><code>##                       
 ##                         DD  NE  LC  NT  VU  EN  CR
-##   brackish_lakes         6  16   4   0   2   1   0
-##   brackish_pools         3  10   3   0   1   0   0
-##   freshwater_lakes       3   6   3   4  14  12  18
-##   rivers                 4  19  14   5  11   7   6
-##   springs               58 262  35  29  79  35  54
-##   subterranean_systems   7  62  11  25  26  10  11</code></pre>
+##   brackish_lakes         4  17   2   1   2   3   0
+##   brackish_pools         1   9   3   2   1   1   0
+##   freshwater_lakes       1   6  12   7   9  13  12
+##   rivers                 2  17  18   4   9   9   7
+##   springs               37 248  48  53  66  44  56
+##   subterranean_systems   4  57  18  27  33   8   5</code></pre>
 <pre class="r"><code># One-hot encoding for habitat
 habitat_ohe &lt;- model.matrix(~ habitat - 1, habitat)
 colnames(habitat_ohe) &lt;- gsub(&quot;habitat&quot;, &quot;&quot;, colnames(habitat_ohe)) </code></pre>
@@ -789,22 +788,22 @@ checkSpecies(iucn_labels, systematic)</code></pre>
 table(systematic$subfamily, iucn_labels$IUCN)</code></pre>
 <pre><code>##                        
 ##                          CR  DD  EN  LC  NE  NT  VU
-##   Belgrandiellinae       11   8   6   6   2   3  11
-##   Belgrandiinae           6  10   5   3   3   3   6
+##   Belgrandiellinae        9   4   8   7   2  12   5
+##   Belgrandiinae           8   6   5   5   5   2   5
 ##   Bullaregiinae           0   0   0   0   6   0   0
-##   Caspiinae               5   2   4   1  11   0   1
-##   Caucasopsiinae          1   1   1   1  37   6   3
-##   Horatiinae             26  12  19  13  56   8  29
+##   Caspiinae               4   1   7   0  11   0   1
+##   Caucasopsiinae          0   1   0   1  34   6   8
+##   Horatiinae             17   9  17  22  49  19  30
 ##   Hydrobiinae             0   1   1   3   7   0   2
-##   Islamiinae             12   9  11  17  23  25  24
-##   Mercuriinae             4   4   3   2  15   1   1
-##   Navarrielinae           0   0   0   0   0   0   1
-##   Nymphophilinae          7  12   5   9 128   2  20
-##   Pontobelgrandiellinae   1   0   0   5   2   6  12
-##   Pseudamnicolinae       11  18   5   3  53   6  10
-##   Pyrgulinae              3   1   2   4   8   2   9
+##   Islamiinae             11   5  15  21  21  25  23
+##   Mercuriinae             5   1   5   4  14   0   1
+##   Navarrielinae           0   0   0   1   0   0   0
+##   Nymphophilinae          9  13   5   8 127   2  19
+##   Pontobelgrandiellinae   1   0   0   8   2  11   4
+##   Pseudamnicolinae       13   7   8   7  46  12  13
+##   Pyrgulinae              2   1   3   8  10   2   3
 ##   Shadiniinae             0   0   0   0   5   0   0
-##   Subfamily1              2   3   3   2  18   1   4
+##   Subfamily1              1   0   4   5  14   3   6
 ##   Subfamily2              0   0   0   1   1   0   0</code></pre>
 <pre class="r"><code>systematic$subfamily[systematic$subfamily == &quot;Pontobelgrandiellinae&quot;] &lt;- 
   &quot;Pontobelgrandiellinae_Bullaregiinae&quot;
@@ -826,19 +825,19 @@ systematic$subfamily[systematic$subfamily == &quot;Subfamily2&quot;] &lt;-
 table(systematic$subfamily, iucn_labels$IUCN)</code></pre>
 <pre><code>##                                      
 ##                                        CR  DD  EN  LC  NE  NT  VU
-##   Belgrandiellinae                     11   8   6   6   2   3  11
-##   Belgrandiinae                         6  10   5   3   3   3   6
-##   Caspiinae                             5   2   4   1  11   0   1
-##   Caucasopsiinae                        1   1   1   1  37   6   3
-##   Horatiinae                           26  12  19  13  56   8  29
+##   Belgrandiellinae                      9   4   8   7   2  12   5
+##   Belgrandiinae                         8   6   5   5   5   2   5
+##   Caspiinae                             4   1   7   0  11   0   1
+##   Caucasopsiinae                        0   1   0   1  34   6   8
+##   Horatiinae                           17   9  17  22  49  19  30
 ##   Hydrobiinae                           0   1   1   3   7   0   2
-##   Islamiinae_Navarrielinae             12   9  11  17  23  25  25
-##   Mercuriinae                           4   4   3   2  15   1   1
-##   Nymphophilinae                        7  12   5   9 128   2  20
-##   Pontobelgrandiellinae_Bullaregiinae   1   0   0   5   8   6  12
-##   Pseudamnicolinae                     11  18   5   3  53   6  10
-##   Pyrgulinae_Shadiniinae                3   1   2   4  13   2   9
-##   Unnamed_Subfamily                     2   3   3   3  19   1   4</code></pre>
+##   Islamiinae_Navarrielinae             11   5  15  22  21  25  23
+##   Mercuriinae                           5   1   5   4  14   0   1
+##   Nymphophilinae                        9  13   5   8 127   2  19
+##   Pontobelgrandiellinae_Bullaregiinae   1   0   0   8   8  11   4
+##   Pseudamnicolinae                     13   7   8   7  46  12  13
+##   Pyrgulinae_Shadiniinae                2   1   3   8  15   2   3
+##   Unnamed_Subfamily                     1   0   4   6  15   3   6</code></pre>
 <pre class="r"><code># One-hot encoded systematics
 systematic_ohe &lt;- model.matrix(~ subfamily - 1, systematic)
 colnames(systematic_ohe) &lt;- gsub(&quot;subfamily&quot;, &quot;&quot;, colnames(systematic_ohe))</code></pre>
@@ -868,36 +867,6 @@ features[, counter + 1] &lt;- (mean_size$size - feature_stats[1, counter]) /
 counter &lt;- counter + 1</code></pre>
 <p><br></p>
 </div>
-<div id="evolutionary-distinctivness" class="section level3">
-<h3>Evolutionary distinctivness</h3>
-<p>Evolutionary distinctiveness (ED) was calculated to represent
-species’ contribution to phylogenetic diversity (Redding &amp; Mooers,
-2006). We used the phylogeny of Delicado et al. (2024), covering
-approximately 45% of species, and incorporated missing taxa using the
-stochastic polytomy resolver TACT (Chang et al., 2020), which adds
-missing species based on their hierarchical taxonomic information and
-the birth-death process. The R package picante (Kembel et al., 2010) was
-then used to calculate ED values for all species according to the
-algorithm of Isaac et al. (2007).</p>
-<pre class="r"><code>tree &lt;- read.tree(file.path(&quot;..&quot;, &quot;raw_data&quot;,
-                            &quot;Hydrobiidae_tacted.newick.reproduce.tre&quot;))
-
-# Remove quotes around species names put there by dendropy (dependency TACT).
-tree$tip.label &lt;- gsub(&quot;&#39;&quot;, &quot;&quot;, tree$tip.label)
-
-# ED algorithm of Isaac et al. (2007)
-ed &lt;- evol.distinct(tree, type = &quot;fair.proportion&quot;)
-
-# z-scale
-feature_stats[1, counter] &lt;- mean(ed$w)
-feature_stats[2, counter] &lt;- sd(ed$w)
-colnames(feature_stats)[counter] &lt;- &quot;ed&quot;
-colnames(features)[counter + 1] &lt;- &quot;ed&quot;
-features[, counter + 1] &lt;- (ed$w - feature_stats[1, counter]) /
-  feature_stats[2, counter]
-counter &lt;- counter + 1</code></pre>
-<p><br></p>
-</div>
 <div id="check-for-multicollinearity" class="section level3">
 <h3>Check for multicollinearity</h3>
 <p>We assessed all predictors for multicollinearity, defined as an
@@ -918,27 +887,25 @@ diag(collinearity) &lt;- 0
 colin_issue &lt;- apply(collinearity, 2, function(x) any(abs(x) &gt; 0.7))
 round(collinearity[colin_issue, colin_issue], 2)</code></pre>
 <pre><code>##               tot_occ uni_occ mean_lat lat_range lon_range   eoo   aoo
-## tot_occ          0.00    1.00     0.09      0.59      0.59  0.77  0.97
-## uni_occ          1.00    0.00     0.09      0.60      0.60  0.77  0.97
-## mean_lat         0.09    0.09     0.00      0.07      0.11  0.08  0.09
-## lat_range        0.59    0.60     0.07      0.00      0.87  0.84  0.66
-## lon_range        0.59    0.60     0.11      0.87      0.00  0.87  0.67
-## eoo              0.77    0.77     0.08      0.84      0.87  0.00  0.85
-## aoo              0.97    0.97     0.09      0.66      0.67  0.85  0.00
-## subbasin_area    0.70    0.71     0.05      0.68      0.71  0.81  0.79
-## hyclim_01       -0.12   -0.12    -0.71     -0.01     -0.07 -0.03 -0.09
-## hyclim_05       -0.07   -0.07    -0.76     -0.01     -0.03 -0.01 -0.05
-##               subbasin_area hyclim_01 hyclim_05
-## tot_occ                0.70     -0.12     -0.07
-## uni_occ                0.71     -0.12     -0.07
-## mean_lat               0.05     -0.71     -0.76
-## lat_range              0.68     -0.01     -0.01
-## lon_range              0.71     -0.07     -0.03
-## eoo                    0.81     -0.03     -0.01
-## aoo                    0.79     -0.09     -0.05
-## subbasin_area          0.00     -0.01     -0.01
-## hyclim_01             -0.01      0.00      0.71
-## hyclim_05             -0.01      0.71      0.00</code></pre>
+## tot_occ          0.00    1.00     0.07      0.61      0.62  0.78  0.97
+## uni_occ          1.00    0.00     0.07      0.61      0.63  0.79  0.98
+## mean_lat         0.07    0.07     0.00      0.05      0.09  0.07  0.08
+## lat_range        0.61    0.61     0.05      0.00      0.87  0.83  0.67
+## lon_range        0.62    0.63     0.09      0.87      0.00  0.87  0.69
+## eoo              0.78    0.79     0.07      0.83      0.87  0.00  0.86
+## aoo              0.97    0.98     0.08      0.67      0.69  0.86  0.00
+## subbasin_area    0.72    0.73     0.03      0.67      0.71  0.81  0.79
+## hyclim_05       -0.06   -0.06    -0.76     -0.02     -0.05 -0.04 -0.06
+##               subbasin_area hyclim_05
+## tot_occ                0.72     -0.06
+## uni_occ                0.73     -0.06
+## mean_lat               0.03     -0.76
+## lat_range              0.67     -0.02
+## lon_range              0.71     -0.05
+## eoo                    0.81     -0.04
+## aoo                    0.79     -0.06
+## subbasin_area          0.00     -0.02
+## hyclim_05             -0.02      0.00</code></pre>
 <pre class="r"><code># Keep only features without high collinearity
 not_collinear &lt;- colnames(features) %notin% c(&quot;tot_occ&quot;, &quot;uni_occ&quot;, &quot;eoo&quot;,
                                               &quot;mean_lat&quot;, &quot;lon_range&quot;,
@@ -958,7 +925,7 @@ write.table(features, file.path(input_path, &quot;features.txt&quot;),
 write.table(feature_stats, file.path(input_path, &quot;feature_stats.txt&quot;),
             sep = &quot;\t&quot;, row.names = TRUE)</code></pre>
 <pre class="r"><code>print(sessionInfo(), locale = FALSE)</code></pre>
-<pre><code>## R version 4.6.0 (2026-04-24)
+<pre><code>## R version 4.6.1 (2026-06-24)
 ## Platform: x86_64-pc-linux-gnu
 ## Running under: Manjaro Linux
 ## 
@@ -970,37 +937,35 @@ write.table(feature_stats, file.path(input_path, &quot;feature_stats.txt&quot;),
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] IUCNN_4.0.0    geodata_0.6-9  terra_1.9-32   picante_1.8.2  nlme_3.1-169  
-## [6] vegan_2.7-5    permute_0.9-10 ape_5.8-1     
+## [1] IUCNN_4.0.0   geodata_0.6-9 terra_1.9-32 
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] tidyselect_1.2.1     dplyr_1.2.1          tensorflow_2.20.0   
-##  [4] fastmap_1.2.0        digest_0.6.39        lifecycle_1.0.5     
-##  [7] sf_1.1-1             cluster_2.1.8.2      magrittr_2.0.5      
-## [10] compiler_4.6.0       rlang_1.2.0          sass_0.4.10         
-## [13] rngtools_1.5.2       tools_4.6.0          yaml_2.3.12         
-## [16] knitr_1.51           doRNG_1.8.6.3        sp_2.2-1            
-## [19] classInt_0.4-11      curl_7.1.0           reticulate_1.46.0   
-## [22] keras_2.16.1         KernSmooth_2.23-26   withr_3.0.2         
-## [25] purrr_1.2.2          itertools_0.1-3      grid_4.6.0          
-## [28] e1071_1.7-17         iterators_1.0.14     MASS_7.3-65         
-## [31] zeallot_0.2.0        cli_3.6.6            rmarkdown_2.31      
-## [34] generics_0.1.4       otel_0.2.0           rstudioapi_0.18.0   
-## [37] PVR_0.3              tzdb_0.5.0           tfruns_1.5.4        
-## [40] DBI_1.3.0            cachem_1.1.0         proxy_0.4-29        
-## [43] splines_4.6.0        parallel_4.6.0       base64enc_0.1-6     
-## [46] vctrs_0.7.3          Matrix_1.7-5         jsonlite_2.0.0      
-## [49] hms_1.1.4            foreach_1.5.2        jquerylib_0.1.4     
-## [52] tidyr_1.3.2          units_1.0-1          splancs_2.01-45     
-## [55] missForest_1.6.1     glue_1.8.1           codetools_0.2-20    
-## [58] tibble_3.3.1         pillar_1.11.1        rappdirs_0.3.4      
-## [61] htmltools_0.5.9      randomForest_4.7-1.2 R6_2.6.1            
-## [64] Rdpack_2.6.6         evaluate_1.0.5       lattice_0.22-9      
-## [67] readr_2.2.0          rbibutils_2.4.1      png_0.1-9           
-## [70] backports_1.5.1      bslib_0.11.0         class_7.3-23        
-## [73] Rcpp_1.1.1-1.1       checkmate_2.3.4      mgcv_1.9-4          
-## [76] ranger_0.18.0        whisker_0.4.1        xfun_0.58           
-## [79] pkgconfig_2.0.3</code></pre>
+##  [1] xfun_0.58            bslib_0.11.0         lattice_0.22-9      
+##  [4] tzdb_0.5.0           vctrs_0.7.3          tools_4.6.1         
+##  [7] keras_2.16.1         Rdpack_2.6.6         tfruns_1.5.4        
+## [10] generics_0.1.4       curl_7.1.0           parallel_4.6.1      
+## [13] missForest_1.6.1     proxy_0.4-29         tibble_3.3.1        
+## [16] pkgconfig_2.0.3      KernSmooth_2.23-26   Matrix_1.7-5        
+## [19] checkmate_2.3.4      rngtools_1.5.2       lifecycle_1.0.5     
+## [22] compiler_4.6.1       codetools_0.2-20     class_7.3-23        
+## [25] htmltools_0.5.9      sass_0.4.10          yaml_2.3.12         
+## [28] tidyr_1.3.2          pillar_1.11.1        jquerylib_0.1.4     
+## [31] whisker_0.4.1        MASS_7.3-65          classInt_0.4-11     
+## [34] cachem_1.1.0         doRNG_1.8.6.3        iterators_1.0.14    
+## [37] foreach_1.5.2        nlme_3.1-169         tidyselect_1.2.1    
+## [40] digest_0.6.39        purrr_1.2.2          sf_1.1-1            
+## [43] dplyr_1.2.1          fastmap_1.2.0        grid_4.6.1          
+## [46] cli_3.6.6            magrittr_2.0.5       base64enc_0.1-6     
+## [49] randomForest_4.7-1.2 e1071_1.7-17         ape_5.8-1           
+## [52] withr_3.0.2          readr_2.2.0          PVR_0.3             
+## [55] backports_1.5.1      rappdirs_0.3.4       sp_2.2-1            
+## [58] rmarkdown_2.31       otel_0.2.0           reticulate_1.46.0   
+## [61] ranger_0.18.0        png_0.1-9            hms_1.1.4           
+## [64] evaluate_1.0.5       knitr_1.51           splancs_2.01-45     
+## [67] rbibutils_2.4.1      rlang_1.2.0          itertools_0.1-3     
+## [70] Rcpp_1.1.1-1.1       zeallot_0.2.0        glue_1.8.1          
+## [73] DBI_1.3.0            rstudioapi_0.18.0    jsonlite_2.0.0      
+## [76] R6_2.6.1             units_1.0-1          tensorflow_2.20.0</code></pre>
 </div>
 
 

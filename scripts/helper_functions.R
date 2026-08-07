@@ -100,8 +100,8 @@ gg_featimp <- function(x, panel_tag, font_size = 7, x_lab_just = 1.1) {
                   width = 0.2, linewidth = 0.6) +
     # Horizontal lines; the same for 5 and 2-class
     scale_y_continuous(
-      limits = c(0, 0.12),
-      breaks = seq(0, 0.12, by = 0.03),
+      limits = c(0, 0.15),
+      breaks = seq(0, 0.15, by = 0.03),
       expand = c(0, 0)
     ) +
     coord_cartesian(clip = "off") +

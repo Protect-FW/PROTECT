@@ -1,5 +1,5 @@
 ---
-title: "Automated Red List assessment reveals hidden extinction risk in one of the world's most diverse freshwater invertebrate families"
+title: "Predicting Red List categories reveals hidden extinction risk in one of the world's most diverse freshwater invertebrate families"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -60,7 +60,7 @@ options(scipen = 999)
 par_default <- par(no.readonly = TRUE)
 
 # Set seed
-set.seed(42)
+set.seed(123)
 ```
 
 <br>
@@ -187,7 +187,7 @@ model_5 <- iucnn_train_model(x = features_train,
                             patience = 2000,
                             n_layers = "20_10",
                             dropout_rate = 0.2,
-                            seed = 570,
+                            seed = 123,
                             balance_classes = TRUE,
                             optimizer_args = list(learning_rate = 1e-4))
 ```
@@ -208,7 +208,7 @@ model_2 <- iucnn_train_model(x = features_train,
                              patience = 2000,
                              n_layers = "20_10",
                              dropout_rate = 0.2,
-                             seed = 476,
+                             seed = 675,
                              balance_classes = TRUE,
                              optimizer_args = list(learning_rate = 1e-4))
 ```
@@ -280,7 +280,7 @@ feature_blocks <- list(
   "Distance\nsink" = "distance_sink",
   "Upstream\narea" = "upstream_area",
   "River order" = "river_order",
-  "Evolutionary\ndistinctivness" = "ed",
+  # "Evolutionary\ndistinctivness" = "ed",
   "Longitude" = "mean_lon",
   "Latitudinal\nrange" = "lat_range",
   "Area of\noccupancy" = "aoo",
@@ -337,25 +337,24 @@ We define the list `pdp_blocks` where all features are included that are discuss
 ```{r pdp_blocks, cache=FALSE}
 pdp_blocks <- list(
   size = "size",
-  elevation = "elevation",
+  # elevation = "elevation",
   # hyclim_01 = "hyclim_01",
   # hyclim_07 = "hyclim_07",
   # hyclim_12 = "hyclim_12",
   hyclim_15 = "hyclim_15",
   # distance_sink = "distance_sink",
   # upstream_area = "upstream_area",
-  # river_order = "river_order",
-  ed = "ed",
+  river_order = "river_order",
   # mean_lon = "mean_lon",
   lat_range = "lat_range",
   aoo = "aoo",
   # footprint = "footprint",
-  habitat = c("rivers",
-              "brackish_lakes",
-              "brackish_pools",
-              "subterranean_systems",
-              "freshwater_lakes",
-              "springs"),
+  # habitat = c("rivers",
+  #             "brackish_lakes",
+  #             "brackish_pools",
+  #             "subterranean_systems",
+  #             "freshwater_lakes",
+  #             "springs"),
   systematics = c("Belgrandiellinae",
                   "Belgrandiinae",
                   "Caspiinae",
@@ -375,7 +374,7 @@ pdp_blocks <- list(
 The calculation of partial-dependence probabilities for both models will take 30 minutes. Reducing dropout_reps will speed it up.
 
 ```{r pdp, cache=FALSE}
-n_cores <- 4 # cores for parallel processing; 4 cores => 2x speed up
+n_cores <- 5 # cores for parallel processing of cross-validations
 pdp_5 <- iucnn_get_pdp(x = model_5,
                        dropout_reps = 100,
                        feature_blocks = pdp_blocks,
@@ -488,16 +487,16 @@ for (i in 1:pred_dropout_reps) {
 ### Prediction performance
 
 ```{r}
-model_5$validation_accuracy
+round(model_5$validation_accuracy, 2)
 ```
 
-The model trained on all five threat categories achieved a test accuracy of 0.43, meaning that it correctly predicted the IUCN status of 43% of previously unseen species, whereas random classification would be expected to achieve an accuracy of 0.20.
+The model trained on all five threat categories achieved a test accuracy of 0.45, meaning that it correctly predicted the IUCN status of 45% of previously unseen species, whereas random classification would be expected to achieve an accuracy of 0.20.
 
 ```{r}
-model_2$validation_accuracy
+round(model_2$validation_accuracy, 2)
 ```
 
-The binary model achieved an accuracy of 0.82 in distinguishing threatened from non-threatened species. Misclassifications were typically limited to categories adjacent to the observed status (Figure S1). 
+The binary model achieved an accuracy of 0.77 in distinguishing threatened from non-threatened species. Misclassifications were typically limited to categories adjacent to the observed status (Figure S1). 
 
 We plot the confusion matrices with the following chunk of code:
 
@@ -572,7 +571,7 @@ wrap_plots(patchworkGrob(p_conf_5), patchworkGrob(p_conf_2)) +
   plot_layout(ncol = 2, widths = c(1.1, 0.9))
 ```
 
-**FIGURE S1** Confusion matrices showing the training performance of the best model for (a) 5-class and (b) 2-class predictions. The matrices should be read row-wise: rows represent the observed IUCN categories, whereas columns show the categories inferred by the models. The color gradient indicates the proportion relative to the observed number of species in each category. The side bar shows the observed number of species per category, and the top bar the total number inferred for each category. For example, of the 70 species classified as LC, 45 were correctly predicted as LC (64%), and the 5-class model overpredicted a total of 85 LC species.
+**FIGURE S1** Confusion matrices showing the training performance of the best model for (a) 5-class and (b) 2-class predictions. The matrices should be read row-wise: rows represent the observed IUCN categories, whereas columns show the categories inferred by the models. The color gradient indicates the proportion relative to the observed number of species in each category. The side bar shows the observed number of species per category, and the top bar the total number inferred for each category. For example, of the 101 species classified as LC, 66 were correctly predicted as LC (65%), and the 5-class model overpredicted a total of 112 LC species.
 
 <br>
 
@@ -584,7 +583,7 @@ pred_freq_2 <- table(pred_2$class_predictions)
 pred_freq_5
 ```
 
-Of the 456 species classified as NE or DD, the optimal 5-class model categorized 90 species as LC, 59 as NT, 89 as VU, 26 as EN, and 192 as CR.
+Of the 456 species classified as NE or DD, the optimal 5-class model categorized 62 species as LC, 32 as NT, 106 as VU, 39 as EN, and 164 as CR.
 
 
 ```{r total_threatened_5}
@@ -592,19 +591,19 @@ num_ass_threatenbed <- sum(iucn_labels_train$IUCN %in% c("VU", "EN", "CR"))
 num_ass_threatenbed + sum(pred_freq_5[3:5])
 ```
 
-When these results were combined with existing IUCN Red List assessments (n = 420), approximately 68% (594 species) of hydrobiids were classified as threatened.
+When these results were combined with existing IUCN Red List assessments (n = 420), approximately 67% (587 species) of hydrobiids were classified as threatened.
 
 ```{r freq_pred_2}
 pred_freq_2
 ```
 
-The 2-class model yielded consistent outcomes, classifying 331 previously unassessed species as threatened and 125 as not threatened.
+The 2-class model yielded consistent outcomes, classifying 314 previously unassessed species as threatened and 89 as not threatened.
 
 ```{r}
 num_ass_threatenbed + pred_freq_2[2]
 ```
 
-When integrated with existing assessments, the proportion of threatened species increased slightly compared to the 5-class model, reaching 71% (618 species).
+When integrated with existing assessments, the proportion of threatened species matched that inferred by the 5-class model, reaching 67% (592 species).
 
 <br>
 
@@ -651,6 +650,7 @@ order_sankey <- c("L_NE", "L_CR" , "L_EN", "L_VU", "L_NT", "L_LC",
                   "R_NE", "R_Threatened", "R_Not Threatened")
 
 # Left, center, right vertical bar with category frequencies
+# Left, center, right vertical bar with category frequencies
 bars <- data.frame(
   stratum = factor(x = order_sankey, levels = order_sankey),
   species = c(
@@ -682,12 +682,10 @@ bars <- data.frame(
     ass_LC,
     # Not assessed and no prediction
     no_pred_NE,
-    # Assessed + predicted not threatened
-    # ass_LC + ass_NT +
-    #   pred_LC_DD + pred_NT_DD + pred_LC_NE + pred_NT_NE,
-    ass_LC + ass_NT + pred_N_DD + pred_N_NE,
     # Assessed + predicted threatened
-    ass_VU + ass_EN + ass_CR + pred_T_DD + pred_T_NE
+    ass_VU + ass_EN + ass_CR + pred_T_DD + pred_T_NE,
+    # Assessed + predicted not threatened
+    ass_LC + ass_NT + pred_N_DD + pred_N_NE
   ),
   stage = c(rep("Left", 6),
             rep("Center", 7),
@@ -914,15 +912,17 @@ Ranked feature importance is shown in Figure 2b,c. Here we create a plot of part
 
 ```{r pd_plot, fig.width=10, fig.height=15}
 # heights and margins around panels
-h <- 0.135
+h <- 0.157
+n_rows <- 6
 mar_left <- c(2.5, 4, 0.2, 0.5)
 mar_right <- c(2.5, 0.1, 0.2, 0.5)
 ylab = "Partial dependency\nprobability"
 
-# 2 columns x 7 rows layout
-layout(matrix(1:14, ncol = 2, nrow = 7, byrow = TRUE),
-       heights = c(rep(h, 2), 1 - 6 * h, rep(h, 4)),
+# 2 columns x 6 rows layout
+layout(matrix(1:(2 * n_rows), ncol = 2, nrow = n_rows, byrow = TRUE),
+       heights = c(rep(h, 2), 1 - (n_rows - 1) * h, rep(h, 3)),
        widths = c(0.53, 0.47))
+
 
 # AOO
 par(mar = mar_left, mgp = c(1.6, 0.5, 0), cex = 0.7, tcl = -0.2)
@@ -982,6 +982,15 @@ xaxt <- log10(xaxt_label + 1)
 axis(side = 1, at = xaxt, label = xaxt_label, xaxt = "s")
 par(xaxt = "s", yaxt = "s")
 
+# River order
+par(mar = mar_left)
+plot(pdp_5, features = "river_order",
+     xlab = "Stream order (Strahler number)", ylab = ylab)
+par(mar = mar_right)
+plot(pdp_2, features = "river_order", col = c("#7EB756", "#E19F4F"),
+     xlab = "Stream order (Strahler number)",
+     ylab = "", yaxt = "n")
+
 # Body size
 par(mar = mar_left)
 plot(pdp_5, features = "size",
@@ -992,24 +1001,7 @@ plot(pdp_2, features = "size", col = c("#7EB756", "#E19F4F"),
      ylab = "", yaxt = "n")
 par(xaxt = "s", yaxt = "s")
 
-# Evolutionary distinctivness
-par(mar = mar_left)
-plot(pdp_5, features = "ed",
-     xlab = "Evolutionary distinctivness (Myr)", ylab = ylab)
-par(mar = mar_right)
-plot(pdp_2, features = "ed", col = c("#7EB756", "#E19F4F"),
-     xlab = "Evolutionary distinctivness (Myr)",
-     ylab = "", yaxt = "n")
-par(xaxt = "s", yaxt = "s")
 
-# Elevation
-par(mar = mar_left)
-plot(pdp_5, features = "elevation",
-     xlab = "Elevation (m)", ylab = ylab)
-par(mar = mar_right)
-plot(pdp_2, features = "elevation", col = c("#7EB756", "#E19F4F"),
-     xlab = "Elevation (m)",
-     ylab = "", yaxt = "n")
 
 ```
 
@@ -1557,6 +1549,16 @@ threat_eval_species <- iucn_labels$IUCN %in% c("VU", "EN", "CR")
 is_edge_species[threat_eval_species] <- 
   n_exceed[threat_eval_species] > 0.8 * pred_dropout_reps
 ```
+
+```{r}
+mean(ePD_loss$ePDloss)
+mean(ePD_loss$ePDloss_prop)
+sum(is_edge_species)
+max(edge_score_stats$EDGE_mean[is_edge_species])
+mean(edge_score_stats$EDGE_mean[is_edge_species])
+```
+
+Overall, 770 Myr of Hydrobiidae's phylogenetic diversity is at risk of extinction, corresponding to 19.2% of its accumulated history. We identified 178 EDGE species, with EDGE scores up to 11.3 Myr and a mean of 2.8 Myr.
 
 Joyplot of the EDGE score distributions for the top 50 species.
 
