@@ -83,6 +83,53 @@ gg_paneltag <- function(panel_tag, font_size = 4) {
 #         font = 2, cex = 1.1, las = 1)
 # }
 
+
+plot_iucnn_featimp <- function(x, ylab = expression(paste(Delta, "Accuracy")),
+                               ylim = NULL, panel_tag = NULL, mar = NULL) {
+  par(las = 2)
+  if (!is.null(mar)) {
+    par(mar = mar)
+  }
+  
+  if (is.null(ylim)) {
+    ylim <- c(0, max(x$feat_imp_mean) + max(x$feat_imp_std))
+  }
+  
+  plot(0, 0, type = "n", xlim = c(0, length(x$feature_block) + 2.5), ylim = ylim,
+       xlab = "", ylab = ylab, axes = FALSE, xaxs = "i")
+  abline(h = seq(0, 0.15, by = 0.03), col = "grey")
+  axis(side = 2, at = seq(0, 0.15, by = 0.03), tick = FALSE)
+  
+  # Mean Delta accuracy as barplots
+  bp <- barplot(height = x$feat_imp_mean,
+                names.arg = x$feature_block,
+                ylim = ylim, ylab = ylab, xaxt = "n", axes = FALSE,
+                add = TRUE)
+  
+  # Standard deviations
+  segments(bp,
+           ifelse(x$feat_imp_mean - x$feat_imp_std < 0,
+                  0,
+                  x$feat_imp_mean - x$feat_imp_std),
+           bp,
+           x$feat_imp_mean + x$feat_imp_std,
+           lwd = 1.5)
+  # Axis labels rotated by 45 degree
+  text(x = bp, y = -0.03 * diff(par("usr")[3:4]),
+       labels = x$feature_block, 
+       srt = 45,                # Rotation angle in degrees
+       adj = 1,                 # Align text end to the tick mark
+       xpd = TRUE,              # Allow drawing text outside plot region
+       cex = 1.0)
+  # Tag e.g. (a)
+  if (!is.null(panel_tag)) {
+    mtext(panel_tag, side = 3,
+          line = -1.0,  # up/down
+          adj = -0.16, # left/right
+          font = 2, cex = 1.1, las = 1)
+  }
+}
+
 gg_featimp <- function(x, panel_tag, font_size = 7, x_lab_just = 1.1) {
   # Strip the pdp class and force to data.frame
   x_df <- as.data.frame(unclass(x))
@@ -177,9 +224,19 @@ rename_pdp_cat <- function(pdp) {
   return(pdp)
 }
 
+#' Order categorical features in the 5-class PDP as they are in the 2-class PDP
+order_as_pdp_2 <- function(pdp_5, pdp_2, name) {
+  ord_in_pdp_2 <- order(pdp_2[[name]]$pdp[, 1])
+  pdp_5[[name]]$feature <- pdp_5[[name]]$feature[ord_in_pdp_2, , drop = FALSE]
+  pdp_5[[name]]$pdp <- pdp_5[[name]]$pdp[ord_in_pdp_2, ]
+  pdp_5[[name]]$lwr <- pdp_5[[name]]$lwr[ord_in_pdp_2, ]
+  pdp_5[[name]]$upr <- pdp_5[[name]]$upr[ord_in_pdp_2, ]
+  return(pdp_5)
+}
+
 #' Convert raw predictions to threat categories
 #' @param raw_pred. Raw prediction output obtained from 
-#' iucnn_prdict_status(..., return_raw = TRUE)
+#' iucnn_predict_status(..., return_raw = TRUE)
 raw_pred_to_class <- function(pred) {
   raw_pred <- pred$raw_predictions
   if (class(raw_pred) == "list") {
