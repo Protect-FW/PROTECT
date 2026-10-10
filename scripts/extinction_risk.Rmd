@@ -10,6 +10,8 @@ This script in R markdown format reproduces all analyses for the manuscript abou
 
 ```{r knitr_setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# Suppress OpenSSL legacy error messages from conda-content-trust
+Sys.setenv(CRYPTOGRAPHY_OPENSSL_NO_LEGACY = "1")
 ```
 
 ## Methods
@@ -31,9 +33,11 @@ library(phylobase)
 
 # Packages for plotting results
 library(sf)
+library(rnaturalearth)
 library(ape)
 library(picante)
 library(phytools)
+library(plotrix)
 library(ggplot2)
 library(ggalluvial)
 library(ggridges)
@@ -221,7 +225,7 @@ We infer the IUCN threat categories for the unassessed species based on their fe
 
 ```{r prediction, cache=FALSE}
 cv_fold <- 5
-pred_dropout_reps <- 1000
+pred_dropout_reps <- 100
 pred_5 <- iucnn_predict_status(x = features_pred,
                                model = model_5,
                                dropout_reps = pred_dropout_reps / cv_fold,
@@ -349,12 +353,12 @@ pdp_blocks <- list(
   lat_range = "lat_range",
   aoo = "aoo",
   # footprint = "footprint",
-  # habitat = c("rivers",
-  #             "brackish_lakes",
-  #             "brackish_pools",
-  #             "subterranean_systems",
-  #             "freshwater_lakes",
-  #             "springs"),
+  habitat = c("rivers",
+              "brackish_lakes",
+              "brackish_pools",
+              "subterranean_systems",
+              "freshwater_lakes",
+              "springs"),
   systematics = c("Belgrandiellinae",
                   "Belgrandiinae",
                   "Caspiinae",
@@ -376,11 +380,11 @@ The calculation of partial-dependence probabilities for both models will take 30
 ```{r pdp, cache=FALSE}
 n_cores <- 5 # cores for parallel processing of cross-validations
 pdp_5 <- iucnn_get_pdp(x = model_5,
-                       dropout_reps = 100,
+                       dropout_reps = 10,
                        feature_blocks = pdp_blocks,
                        n_cores = n_cores)
 pdp_2 <- iucnn_get_pdp(x = model_2,
-                       dropout_reps = 100,
+                       dropout_reps = 10,
                        feature_blocks = pdp_blocks,
                        n_cores = n_cores)
 
@@ -393,12 +397,10 @@ pdp_5 <- rename_pdp_cat(pdp_5)
 pdp_2 <- rename_pdp_cat(pdp_2)
 
 # Order systematic in pdp_5 as in pdp_2 for nicer plots
-ord_in_pdp_2 <- order(pdp_2$systematics$pdp[, 1])
-pdp_5$systematics$feature <- pdp_5$systematics$feature[
-  ord_in_pdp_2, , drop = FALSE]
-pdp_5$systematics$pdp <- pdp_5$systematics$pdp[ord_in_pdp_2, ]
-pdp_5$systematics$lwr <- pdp_5$systematics$lwr[ord_in_pdp_2, ]
-pdp_5$systematics$upr <- pdp_5$systematics$upr[ord_in_pdp_2, ]
+pdp_5 <- order_as_pdp_2(pdp_5, pdp_2, "systematics")
+
+# Order habitat in pdp_5 as in pdp_2 for nicer plots
+pdp_5 <- order_as_pdp_2(pdp_5, pdp_2, "habitat")
 ```
 
 <br>
@@ -587,8 +589,8 @@ Of the 456 species classified as NE or DD, the optimal 5-class model categorized
 
 
 ```{r total_threatened_5}
-num_ass_threatenbed <- sum(iucn_labels_train$IUCN %in% c("VU", "EN", "CR"))
-num_ass_threatenbed + sum(pred_freq_5[3:5])
+num_ass_threatened <- sum(iucn_labels_train$IUCN %in% c("VU", "EN", "CR"))
+num_ass_threatened + sum(pred_freq_5[3:5])
 ```
 
 When these results were combined with existing IUCN Red List assessments (n = 420), approximately 67% (587 species) of hydrobiids were classified as threatened.
@@ -600,7 +602,7 @@ pred_freq_2
 The 2-class model yielded consistent outcomes, classifying 314 previously unassessed species as threatened and 89 as not threatened.
 
 ```{r}
-num_ass_threatenbed + pred_freq_2[2]
+num_ass_threatened + pred_freq_2[2]
 ```
 
 When integrated with existing assessments, the proportion of threatened species matched that inferred by the 5-class model, reaching 67% (592 species).
@@ -763,6 +765,7 @@ flow_left <- data.frame(
 
 
 # Sankey plot
+font_size_categories <- 4.5
 p_sankey <- ggplot() +
   # Left flows
   geom_flow(data = flow_left, 
@@ -786,7 +789,7 @@ p_sankey <- ggplot() +
   geom_text(data = bars, stat = "stratum", 
             aes(x = stage, y = species, stratum = stratum,
                 label = species), 
-            fontface = "bold", size = 3.5) +
+            fontface = "bold", size = font_size_categories) +
   
   # Bar names
   scale_x_discrete(
@@ -829,7 +832,6 @@ p_sankey <- ggplot() +
   )) +
   # Scale y-stretching to minimize gap between bar labels and bars
   scale_y_continuous(expand = expansion(mult = c(0.01, 0.05))) +
-  labs(title = "(a)") +
   theme_minimal() +
   theme(
     legend.position = "none",
@@ -837,9 +839,7 @@ p_sankey <- ggplot() +
     axis.text.y = element_blank(),
     axis.title.y = element_blank(),
     axis.title.x = element_blank(), 
-    axis.text.x = element_text(size = 11, face = "plain"),
-    plot.title = element_text(size = 12, face = "bold",
-                              hjust = 0.1, vjust = -12),
+    axis.text.x = element_text(size = 14, face = "plain"),
     plot.margin = margin(t = -40, r = -80, b = 0, l = -80, unit = "pt")
   )
 
@@ -871,48 +871,83 @@ p_legend_sankey <- ggplot() +
                 fill = color)) +
   geom_text(data = legend_5,
             aes(x = (xmin + xmax)/2, y = (ymin + ymax)/2, label = label), 
-            size = 2, fontface = "plain", color = "black") +
+            size = font_size_categories, fontface = "bold", color = "black") +
   # Legend 2-class
   geom_rect(data = legend_2,
             aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
                 fill = color)) +
   geom_text(data = legend_2,
             aes(x = (xmin + xmax)/2, y = (ymin + ymax)/2, label = label), 
-            size = 2, fontface = "plain", color = "black", angle = 90,
-            lineheight = 0.8) +
+            size = font_size_categories, fontface = "bold", color = "black",
+            angle = 90, lineheight = 0.8) +
   # Interpret hex strings as colors
   scale_fill_identity() + 
-  # Axis limit Why setting to 4 to move it to the left???
-  coord_cartesian(xlim = c(4, 20), ylim = c(1, 8), clip = "off") +
+  # Axis limit Why setting to 2 to move it to the left???
+  coord_cartesian(xlim = c(2, 4), ylim = c(1.4, 11), clip = "off") +
   theme_void() +
   theme(plot.margin = margin(t = 0, r = 0, b = 0, l = 0))
 
-# ggplot object of barplots showing feature importance
-p_feat_imp_5 <- gg_featimp(feat_imp_5, "(b)")
-p_feat_imp_2 <- gg_featimp(feat_imp_2, "(c)")
-
-right_side_stacked <- p_legend_sankey / 
-                      p_feat_imp_5 / 
-                      plot_spacer() / # Hidden spacer
-                      p_feat_imp_2 + 
-  # Set the spacer height to a negative value to pull plots together
-  plot_layout(heights = c(0.8, 1, -0.2, 1))
-
-p_sankey + right_side_stacked + 
-  plot_layout(ncol = 2, widths = c(1.2, 0.8), guides = "collect")
+p_sankey + p_legend_sankey + 
+  plot_layout(ncol = 2, widths = c(1.0, 0.1), guides = "collect")
 ```
 
-**FIGURE 2** Distribution of the number of species by threatened status and feature importance histograms. (a) Assessment of 876 hydrobiid species combining the IUCN Red List-assessed species (central column) and our predictions according to the 5-class model (left column) and 2-class model (right column). Drivers of extinction risk in the Hydrobiidae ranked by decreasing importance for the (b) 5-class and (c) 2-class models.
+**FIGURE 2** Distribution of the number of species by threat status. Assessment of 876 hydrobiid species combining the IUCN Red List-assessed species (central column) and our predictions according to the 5-class model (left column) and 2-class model (right column).
 
 <br>
 
 ### Feature importance and drivers of extinction risk
 
-Ranked feature importance is shown in Figure 2b,c. Here we create a plot of partial dependence probabilities.
+```{r importance, fig.width=10, fig.height=8}
+layout(matrix(1:4, ncol = 2, nrow = 2, byrow = TRUE),
+       heights = c(0.55, 0.45))
+
+par(mgp = c(2.3, 0.5, 0), lheight = 0.7)
+plot_iucnn_featimp(feat_imp_5, ylab = expression(paste(Delta, "Accuracy")),
+                   ylim = c(0, 0.15), panel_tag = "(a)",
+                   mar = c(4, 4, 1, 0.1))
+plot_iucnn_featimp(feat_imp_2, ylab = expression(paste(Delta, "Accuracy")),
+                   ylim = c(0, 0.15), panel_tag = "(b)",
+                   mar = c(4, 4, 1, 0.1))
+
+
+
+# AOO
+ylab = "Partial dependency\nprobability"
+mar <- c(3.5, 4, 1, 0.1)
+par(mar = mar, tcl = -0.2)
+plot(pdp_5, features = "aoo", xaxt = "n",
+     xlab = expression("Area of occupancy"~(km^2)), ylab = ylab)
+xaxt_label <- pretty(par('usr')[1:2])
+xaxt_label <- signif(10**xaxt_label - 1, digits = 0)
+xaxt <- log10(xaxt_label + 1)
+axis(side = 1, at = xaxt, label = xaxt_label, xaxt = "s")
+mtext("(c)", side = 3,
+      line = -0.5, # up/down
+      adj = -0.16, # left/right
+      font = 2, cex = 1.1, las = 1)
+
+par(mar = mar)
+plot(pdp_2, features = "aoo", xaxt = "n" , col = c("#7EB756", "#E19F4F"),
+     xlab = expression("Area of occupancy"~(km^2)), ylab = ylab)
+xaxt_label <- pretty(par('usr')[1:2])
+xaxt_label <- signif(10**xaxt_label - 1, digits = 0)
+xaxt <- log10(xaxt_label + 1)
+axis(side = 1, at = xaxt, label = xaxt_label, xaxt = "s")
+par(xaxt = "s", yaxt = "s")
+mtext("(d)", side = 3,
+      line = -0.5,
+      adj = -0.16,
+      font = 2, cex = 1.1, las = 1)
+```
+
+
+
+**FIGURE 3** Importance and effects of predictors of extinction risk in Hydrobiidae. Predictor importance for the (a) 5-class and (b) 2-class models. Panels (c) and (d) show the marginal effects of area of occupancy (AOO) on the predicted probability of each threat category for the 5-class and 2-class models, respectively, while averaging over all remaining predictors. Colors correspond to IUCN threat categories
+
+Here we create a supplementary plot of partial dependence probabilities for a few additional features.
 
 ```{r pd_plot, fig.width=10, fig.height=15}
 # heights and margins around panels
-h <- 0.157
 n_rows <- 6
 mar_left <- c(2.5, 4, 0.2, 0.5)
 mar_right <- c(2.5, 0.1, 0.2, 0.5)
@@ -920,29 +955,9 @@ ylab = "Partial dependency\nprobability"
 
 # 2 columns x 6 rows layout
 layout(matrix(1:(2 * n_rows), ncol = 2, nrow = n_rows, byrow = TRUE),
-       heights = c(rep(h, 2), 1 - (n_rows - 1) * h, rep(h, 3)),
+       heights = c(0.1, 0.135, 0.12, 0.1, 0.1, 0.1),
        widths = c(0.53, 0.47))
 
-
-# AOO
-par(mar = mar_left, mgp = c(1.6, 0.5, 0), cex = 0.7, tcl = -0.2)
-plot(pdp_5, features = "aoo", xaxt = "n",
-     xlab = expression("Area of occupancy"~(km^2)), ylab = ylab)
-# Convert log10 transformed axis values to natural scale
-xaxt_label <- pretty(par('usr')[1:2])
-xaxt_label <- signif(10**xaxt_label - 1, digits = 0)
-xaxt <- log10(xaxt_label + 1)
-axis(side = 1, at = xaxt, label = xaxt_label, xaxt = "s")
-
-par(mar = mar_right)
-plot(pdp_2, features = "aoo", xaxt = "n" , col = c("#7EB756", "#E19F4F"),
-     xlab = expression("Area of occupancy"~(km^2)),
-     ylab = "", yaxt = "n")
-xaxt_label <- pretty(par('usr')[1:2])
-xaxt_label <- signif(10**xaxt_label - 1, digits = 0)
-xaxt <- log10(xaxt_label + 1)
-axis(side = 1, at = xaxt, label = xaxt_label, xaxt = "s")
-par(xaxt = "s", yaxt = "s")
 
 # Hyclim15
 par(mar = mar_left)
@@ -960,6 +975,14 @@ par(mar = c(8.5, mar_left[2:4]))
 plot(pdp_5, features = "systematics", order_categorical = FALSE, ylab = ylab)
 par(mar = c(8.5, mar_right[2:4]))
 plot(pdp_2, features = "systematics", col = c("#7EB756", "#E19F4F"),
+     ylab = "", yaxt = "n")
+par(xaxt = "s", yaxt = "s")
+
+# Habitat
+par(mar = c(6, mar_left[2:4]))
+plot(pdp_5, features = "habitat", order_categorical = FALSE, ylab = ylab)
+par(mar = c(6, mar_right[2:4]))
+plot(pdp_2, features = "habitat", col = c("#7EB756", "#E19F4F"),
      ylab = "", yaxt = "n")
 par(xaxt = "s", yaxt = "s")
 
@@ -1000,9 +1023,6 @@ plot(pdp_2, features = "size", col = c("#7EB756", "#E19F4F"),
      xlab = "Body size (mm)",
      ylab = "", yaxt = "n")
 par(xaxt = "s", yaxt = "s")
-
-
-
 ```
 
 **FIGURE S2** Feature effects on extinction risk for the 5-class (left) and 2-class (right) models. For the color coding of the threat categories, see Figures 2 and S1. Partial dependence plots (PDPs) show the marginal effect of each focal predictor on the predicted softmax probability of each threat category while averaging over all remaining predictors. The curves therefore represent the average change in predicted extinction risk across the observed range of each predictor, with all other predictors held at their observed values. Solid lines show the mean predicted probabilities, and the grey shaded areas represent the uncertainty estimated from 100 Monte Carlo dropout repetitions.
@@ -1074,7 +1094,7 @@ legend("bottomright", legend = c("Evaluated", "Predicted"), bty = "n",
        fill = c("grey", "dodgerblue"), cex = 1.2)
 ```
 
-**FIGURE 3** Distribution of the number of species by habitat type according to the (a) 5-class model and (b) 2-class model.
+**FIGURE 3** Proportion of threatened species by habitat type according to the (a) 5-class model and (b) 2-class model
 
 
 ```{r}
@@ -1140,36 +1160,83 @@ ecoregions$threat_2[m] <- num_threat_2
 rich_no_threat <- !is.na(ecoregions$richness) & is.na(ecoregions$threat_2)
 ecoregions$threat_2[rich_no_threat] <- 0
 ecoregions$ratio_2 <- 100 * (ecoregions$threat_2 / ecoregions$richness)
+
+# Add Antarctica, which is missing from freshwater ecoregions
+antarctica <- ne_countries(continent = "Antarctica",
+                           returnclass = "sf")
+antarctica <- st_sf(
+  FEOW_ID = NA,
+  AREA_SKM = NA,
+  richness = NA,
+  ass_threat = NA,
+  threat_5 = NA,
+  ratio_5 = NA,
+  threat_2 = NA,
+  ratio_2 = NA,
+  geometry = st_geometry(antarctica),
+  crs = st_crs(antarctica)
+)
+antarctica <- antarctica[, colnames(ecoregions)]
+ecoregions_combined <- rbind(ecoregions, antarctica)
 ```
 
 Now we can plot the distribution of threatened diversity.
 
-```{r plot_maps, fig.width=10, fig.height=13}
+```{r plot_maps, fig.width=10, fig.height=13, message = FALSE}
+# Avoid corrupting polygons when changing coordinate reference system 
+ecoregions_fixed <- suppressWarnings(
+  suppressMessages(
+    st_break_antimeridian(ecoregions_combined, lon_0 = -30)
+  )
+)
+
 # Change ecoregion coordinate reference system to Winkle Triple
-plot_crs <- "+proj=laea +lat_0=50 +lon_0=-10 
-                        +x_0=4321000 +y_0=3210000 
+plot_crs <- "+proj=laea +lat_0=44 +lon_0=-30
+                        +x_0=0 +y_0=0
                         +ellps=GRS80 +units=m +no_defs"
+
 
 # Set ggplot theme for all maps
 map_theme <- theme(
-    # Hide box
-    panel.border = element_blank(),
-    # Hide axis text (coordinates)
-    axis.text = element_blank(), 
-    # Hide axis ticks
-    axis.ticks = element_blank(),
-    # Transparent background
-    plot.background = element_blank(),
-    panel.background = element_blank(),
-    legend.background = element_blank(),
-    # No margin around maps
-    plot.margin = margin(0.0, 0.0, 0, 0.0, "in"),
-    # Centered bold-faced title
-    plot.title = element_text(hjust = 0.5, face = "bold"),
+  # Hide box
+  panel.border = element_blank(),
+  # Hide axis text (coordinates)
+  axis.text = element_blank(), 
+  # Hide axis ticks
+  axis.ticks = element_blank(),
+  # Enable and style the graticule lines
+  panel.grid.major = element_line(color = "gray70",
+                                  linetype = "dashed",
+                                  linewidth = 0.2),
+  panel.grid.minor = element_blank(),
+  # Transparent background
+  plot.background = element_blank(),
+  panel.background = element_blank(),
+  # legend.background = element_blank(),
+  # Legend position
+  legend.position = c(0.1, 0.5),     # Adjust x and y
+  legend.justification = c(0.5, 0.5), # Center anchor point of the legend box
+  legend.direction = "vertical",       
+  legend.background = element_rect(fill = alpha("white", 0.6), color = NA),
+  legend.key.width = unit(7, "pt"),
+  legend.key.height = unit(14, "pt"),
+  legend.title = element_text(size = 8),
+  legend.text = element_text(size = 7),
+  # No margin around maps
+  plot.margin = margin(0.0, 0.0, 0, 0.0, "in"),
+  # Centered bold-faced title
+  plot.title = element_text(hjust = 0.5, face = "bold"),
+)
+
+# Bring numbers closer to legend
+guide <- guide_colorbar(
+  label.theme = element_text(margin = margin(l = 3, r = 0, unit = "pt")),
+  ticks.linewidth = unit(0.0, "pt"),
+  nbin = 300
 )
 
 # Richness map
-map_richness <- ggplot(data = ecoregions) +
+map_richness <- ggplot(data = ecoregions_fixed) +
   geom_sf() +
   geom_sf(aes(fill = richness),
           linewidth = 0.05, col = NA) +
@@ -1181,13 +1248,16 @@ map_richness <- ggplot(data = ecoregions) +
     labels = c("1", "10", "25", "50", "80"),  # Customize labels
     na.value = "grey",  # Color for regions without Hydrobiidae
     name = "Species",
+    guide = guide
   ) +
   coord_sf(crs = plot_crs) +
+  scale_x_continuous(breaks = seq(-180, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(-90, 90, by = 20)) +
   map_theme + 
   labs(title = "Number of species")
 
 # Map of assessed and threatened species
-map_ass_threat <- ggplot(data = ecoregions) +
+map_ass_threat <- ggplot(data = ecoregions_fixed) +
   geom_sf() +
   geom_sf(aes(fill = ass_threat),
           linewidth = 0.05, col = NA) +
@@ -1199,13 +1269,16 @@ map_ass_threat <- ggplot(data = ecoregions) +
     labels = c("0", "5", "15", "30", "50"),  # Customize labels
     na.value = "grey",  # Color for regions without Hydrobiidae
     name = "Evaluated\nthreatened",
+    guide = guide
   ) +
   coord_sf(crs = plot_crs) +
+  scale_x_continuous(breaks = seq(-180, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(-90, 90, by = 20)) +
   map_theme + 
   labs(title = "IUCN")
 
 # Map of assessed + predicted threatened species according to 5-class model
-map_threat_5 <- ggplot(data = ecoregions) +
+map_threat_5 <- ggplot(data = ecoregions_fixed) +
   geom_sf() +
   geom_sf(aes(fill = threat_5),
           linewidth = 0.05, col = NA) +
@@ -1217,13 +1290,16 @@ map_threat_5 <- ggplot(data = ecoregions) +
     labels = c("0", "5", "20", "40", "60"),  # Customize labels
     na.value = "grey",  # Color for regions without Hydrobiidae
     name = "Eval. + pred.\nthreatened",
+    guide = guide
   ) +
   coord_sf(crs = plot_crs) +
+  scale_x_continuous(breaks = seq(-180, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(-90, 90, by = 20)) +
   map_theme + 
   labs(title = "5-class")
 
 # Proportion of assessed + predicted threatened species according to 5-class model
-map_ratio_5 <- ggplot(data = ecoregions) +
+map_ratio_5 <- ggplot(data = ecoregions_fixed) +
   geom_sf() +
   geom_sf(aes(fill = ratio_5),
           linewidth = 0.05, col = NA) +
@@ -1232,13 +1308,16 @@ map_ratio_5 <- ggplot(data = ecoregions) +
     limits = c(0, 100),
     na.value = "grey",  # Color for regions without Hydrobiidae
     name = "Threatened %",
+    guide = guide
   ) +
   coord_sf(crs = plot_crs) +
+  scale_x_continuous(breaks = seq(-180, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(-90, 90, by = 20)) +
   map_theme + 
   labs(title = "5-class")
 
 # Map of assessed + predicted threatened species according to 2-class model
-map_threat_2 <- ggplot(data = ecoregions) +
+map_threat_2 <- ggplot(data = ecoregions_fixed) +
   geom_sf() +
   geom_sf(aes(fill = threat_2),
           linewidth = 0.05, col = NA) +
@@ -1250,13 +1329,16 @@ map_threat_2 <- ggplot(data = ecoregions) +
     labels = c("0", "5", "20", "40", "60"),  # Customize labels
     na.value = "grey",  # Color for regions without Hydrobiidae
     name = "Eval. + pred.\nthreatened",
+    guide = guide
   ) +
   coord_sf(crs = plot_crs) +
+  scale_x_continuous(breaks = seq(-180, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(-90, 90, by = 20)) +
   map_theme + 
   labs(title = "2-class")
 
 # Proportion of assessed + predicted threatened species according to 5-class model
-map_ratio_2 <- ggplot(data = ecoregions) +
+map_ratio_2 <- ggplot(data = ecoregions_fixed) +
   geom_sf() +
   geom_sf(aes(fill = ratio_2),
           linewidth = 0.05, col = NA) +
@@ -1265,8 +1347,11 @@ map_ratio_2 <- ggplot(data = ecoregions) +
     limits = c(0, 100),
     na.value = "grey",  # Color for regions without Hydrobiidae
     name = "Threatened %",
+    guide = guide
   ) +
   coord_sf(crs = plot_crs) +
+  scale_x_continuous(breaks = seq(-180, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(-90, 90, by = 20)) +
   map_theme + 
   labs(title = "2-class")
 
@@ -1285,7 +1370,7 @@ combined_maps <- combined_maps & theme(
 combined_maps
 ```
 
-**FIGURE 4** Distribution maps of species richness and proportion of threatened species across freshwater ecoregions. (a) Number of described hydrobiid species and (b) those evaluated by the IUCN. IUCN and newly added threatened species based on 5-class prediction (c) richness, (d) proportion; IUCN and newly added threatened species based on 2-class prediction (e) richness, (f) proportion.
+**FIGURE 4** Distribution of hydrobiid diversity and extinction risk across freshwater ecoregions. (a) Number of described hydrobiid species; (b) number of species assessed by the IUCN Red List. Dark grey indicates ecoregions lacking sufficient information to estimate extinction risk. Maps based on IUCN assessments and threatened species predicted by the 5-class model show (c) number of threatened species and (d) their proportion compared with the richness of the respective ecoregion. Maps based on observed IUCN assessments and threatened species predicted by the 2-class model show (e) the number of threatened species and (f) their proportion
 
 <br>
 
@@ -1297,7 +1382,7 @@ A second panel shows the proportion of threatened evolutionary history of Hydrob
 
 ```{r, message = FALSE, fig.width=10, fig.height=7}
 # Remove quotes around species names put there by dendropy, which is a 
-# dependencyof TACT to augment the tree
+# dependency of TACT to augment the tree
 tree$tip.label <- gsub("'", "", tree$tip.label)
 
 # Order tree according to branch lengths for nicer plot
@@ -1371,37 +1456,38 @@ systematic$species <- gsub(" ", "", systematic$species) # Remove spaces
 m <- match(ed_ace$tree$tip.label, systematic$species)
 col_tip_subfam <- rep(rgb(70, 70, 70, maxColorValue = 100), n_species)
 col_subfam <- data.frame(
-  subfamily = c("Horatiinae",
-                "Islamiinae",
-                "Pseudamnicolinae",
-                "Hydrobiinae",
-                "Nymphophilinae",
-                "Pyrgulinae",
-                "Belgrandiellinae",
+  subfamily = c("Caspiinae",
                 "Belgrandiinae",
-                "Caspiinae",
+                "Horatiinae",
+                "Hydrobiinae",
                 "Shadiniinae",
+                "Pyrgulinae",
+                "Pseudamnicolinae",
                 "Mercuriinae",
+                "Nymphophilinae",
                 "Navarrielinae",
                 "Bullaregiinae",
                 "Pontobelgrandiellinae",
-                "Caucasopsiinae"),
-  col = c(rgb(75, 86, 92, maxColorValue = 100),
-          rgb(12, 47, 70, maxColorValue = 100),
-          rgb(70, 87, 54, maxColorValue = 100),
-          rgb(20, 63, 17, maxColorValue = 100),
-          rgb(98, 60, 60, maxColorValue = 100),
-          rgb(100, 75, 43, maxColorValue = 100),
-          rgb(89, 10, 11, maxColorValue = 100),
+                "Caucasopsiinae",
+                "Islamiinae",
+                "Belgrandiellinae"),
+  col = c(rgb(42, 24, 60, maxColorValue = 100),
           rgb(100, 50, 0, maxColorValue = 100),
-          rgb(42, 24, 60, maxColorValue = 100),
+          rgb(75, 86, 92, maxColorValue = 100),
+          rgb(20, 63, 17, maxColorValue = 100),
           rgb(79, 70, 84, maxColorValue = 100),
+          rgb(100, 75, 43, maxColorValue = 100),
+          rgb(70, 87, 54, maxColorValue = 100),
           rgb(100, 100, 60, maxColorValue = 100),
+          rgb(98, 60, 60, maxColorValue = 100),
           rgb(0, 0, 0, maxColorValue = 100),
           rgb(69, 34, 16, maxColorValue = 100),
-          rgb(82, 0, 66, maxColorValue = 100),
-          rgb(50, 80, 76, maxColorValue = 100))
+          rgb(100, 0, 100, maxColorValue = 100),
+          rgb(50, 80, 76, maxColorValue = 100),
+          rgb(12, 47, 70, maxColorValue = 100),
+          rgb(89, 10, 11, maxColorValue = 100))
 )
+
 for(i in 1:nrow(col_subfam)) {
   idx <- systematic$subfamily[m] == col_subfam[i, 1]
   col_tip_subfam[idx] <- col_subfam[i, 2]
@@ -1427,9 +1513,8 @@ clades <- c("Gymnosperms", "Angiosperms", "Aves", "Mammalia",
 clade_col <- c(rep("green3", 2), rep("darkorange", 8), "dodgerblue")
   
   
-
-layout(matrix(c(1, 1, 2, 3), ncol = 2, nrow = 2),
-       widths = c(0.6, 0.4), heights = c(0.3, 0.7))
+layout(matrix(c(1, 2, 3, 3), ncol = 2, nrow = 2),
+       widths = c(0.6, 0.4), heights = c(0.8, 0.2))
 
 # Plot tree with ED gradient
 plot(ed_ace, lwd = 1.2, type = "fan", ftype = "off",
@@ -1437,24 +1522,38 @@ plot(ed_ace, lwd = 1.2, type = "fan", ftype = "off",
      xlim = c(-xy_lim, xy_lim),
      ylim = c(-xy_lim, xy_lim))
 
+
+# Add circles indicating age
+ages <- c(10, 20, 30, 40, 50) 
+end_rad <- c(-354, -353, -350, -345, -330)
+for (i in 1:length(ages)) {
+  # Arc from 2 to end_rad  degrees in radians
+  theta <- seq(1 * (pi / 180), end_rad[i] * (pi / 180), length.out = 100) 
+  age <- ages[i]
+  lines(x = 0 + (root_age - age) * cos(theta),
+        y = 0 + (root_age - age) * sin(theta),
+        col = "grey", lty = 5)
+  text(x = root_age - age, y = 3, labels = age, col = "grey", cex = 0.9)
+}
+
+
 # Make a legend where the log10 ED values are transformed to natural scale
-x_bar <- -65  # left position of the color.bar
-y_bar <- -60  # horizontal position of the color.bar
-len_bar <- 25 # length of the bar in Myr
+x_bar <- -65 # left margin of the color.bar
+y_bar <- -60
 
 bar_ticks <- c(ed_ace$lims[1], sum(ed_ace$lims)/2, ed_ace$lims[2])
 bar_ticks_pretty <- signif(10**bar_ticks, digits = 1)
 bar_at <- x_bar + 
-  len_bar * (log10(bar_ticks_pretty) - min(bar_ticks)) / max(bar_ticks)
+  25 * (log10(bar_ticks_pretty) - min(bar_ticks)) / max(bar_ticks)
 for (i in 1:length(bar_at)) {
   lines(rep(bar_at[i], 2), c(y_bar, y_bar - 2))
   text(x = bar_at[i], y = y_bar - 1, labels = bar_ticks_pretty[i],
        pos = 1, cex = 0.8)
 }
 
-add.color.bar(leg = len_bar, ed_ace$cols,
+add.color.bar(leg = 25, ed_ace$cols,
               prompt = FALSE, x = x_bar, y = y_bar,
-              title = "Evolutionary distinctivness", fsize = 0.7,
+              title = "Evolutionary distinctivness", fsize = 0.8,
               subtitle = "", lims=NULL)
 
 
@@ -1468,20 +1567,82 @@ segments(x_origin_subfam, y_origin_subfam,
          x_endpoint_subfam, y_endpoint_subfam,
          col = col_tip_subfam, lwd = 3, lend = 3)
 
-# Subfamily legend
-par(mar = rep(1, 4))
-plot(1, 1, type = "n", axes = FALSE, xlab = "", ylab = "")
-legend("top", ncol = 2, bty = "n",
-       title = "Subfamily", title.adj = 0, title.cex = 1.2,
-       pch = 15, cex = 1, pt.cex = 1.1,
-       legend = c("?", col_subfam$subfamily),
-       col = c(rgb(70, 70, 70, maxColorValue = 100), col_subfam$col))
+# Add numbers to colored arcs
+tip_angles_rad <- atan2(direction_y, direction_x)
+for (i in 1:nrow(col_subfam)) {
+  if (i == 10) {
+    add_to_plot <- FALSE
+  }
+  else if (i == 13) {
+    middle <- -3.02
+    add_to_plot <- TRUE
+    label <- as.character(i)
+  }
+  else if (i == 15) {
+    idx <- systematic$subfamily[m] == col_subfam[i, 1]
+    middle <- mean(tip_angles_rad[idx])
+    add_to_plot <- TRUE
+    label <- as.character(i + 1)
+  }
+  else {
+    idx <- systematic$subfamily[m] == col_subfam[i, 1]
+    middle <- mean(tip_angles_rad[idx])
+    add_to_plot <- TRUE
+    label <- as.character(i)
+  }
+  if (add_to_plot) {
+    arctext(x = label, cex = 0.8,
+            center = c(0, 0), radius = radius_origin_subfam[1] * 1.025,
+            middle = middle)
+  }
+}
+arctext(x = "15", cex = 0.8,
+        center = c(0, 0), radius = radius_origin_subfam[1] * 1.025,
+        middle = 2.06)
 
-# Violin plots of threatened evolutionary history
-par(las = 1, mar = c(6, 8, 0.5, 1))
-plot(1, 1, type = "n", ylim = c(1, 11), xlim = c(5, 30),
-     xaxs = "i", axes = FALSE,
-     xlab = "% Threatened evolutionary history", ylab = "")
+text(x = -64, y = xy_lim * 1.0, labels = "(a)", font = 2, cex = 1.4)
+
+# Subfamily legend
+par(mar = rep(0, 4))
+plot(1, 1, xlim = c(-2, 18), ylim = c(6, 0), xaxs = "i", yaxs = "i",
+     type = "n", axes = FALSE, xlab = "", ylab = "")
+ybottom <- c(rep(0, 3), rep(1, 3), rep(2, 3), rep(3, 3), rep(4, 3), 5) + 0.1
+ytop <- ybottom + 0.8
+xleft <- c(rep(c(0, 6, 12), 5), 0)
+xright <- xleft + 0.7
+font_size <- 1 
+  
+for (i in 1:16) {
+  col_number <- "black"
+  if (i %in% c(1, 10)) {
+    col_number <- "grey"
+  }
+  if (i < 14) {
+    col <- col_subfam[i, 2]
+    label <- col_subfam[i, 1]
+  }
+  else if (i == 14) {
+    col <- rgb(70, 70, 70, maxColorValue = 100)
+    label <- "Unassigned"
+  }
+  else {
+    col <- col_subfam[i - 1, 2]
+    label <- col_subfam[i - 1, 1]
+  }
+  rect(xleft[i], ybottom[i], xright[i], ytop[i],
+       col = col, border = NA)
+  x <- (xleft[i] + xright[i]) / 2
+  y <- (ybottom[i] + ytop[i]) / 2
+  text(x, y, labels = as.character(i), adj = c(0.5, 0.5),
+       cex = font_size, col = col_number)
+  text(x + 0.6, y, labels = label, adj = c(0, 0.5), cex = font_size)
+}
+
+# Threatened evolutionary history
+par(las = 1, mar = c(8, 8, 4, 1))
+plot(1, 1, type = "n", ylim = c(1, 11), xlim = c(5, 30), xaxs = "i",
+     xlab = "% Threatened evolutionary history", ylab = "",
+     axes = FALSE)
 abline(v = seq(10, 25, 5), col = "grey")
 axis(side = 1, at = seq(0, 30, 5))
 axis(side = 2, at = 1:11, lwd = 0, labels = clades)
@@ -1492,9 +1653,14 @@ for (i in 1:length(clades)) {
           col = clade_col[i], colMed = "black",
           axes = FALSE, add = TRUE)
 }
+
+mtext("(b)", side = 3,
+      line = 1.0,  # up/down
+      adj = -0.6, # left/right
+      font = 2, cex = 1.1, las = 1)
 ```
 
-**FIGURE 5** Evolutionary distinctiveness, extinction risk, and threatened evolutionary history in Hydrobiidae. (a) Augmented phylogeny of Hydrobiidae with branches colored according to evolutionary distinctiveness (ED) values. Tip colors represent IUCN Red List categories, including both evaluated and model-predicted (5-class) classifications. Length of scale bar equals 25 Myr. (b) Estimated proportion of threatened evolutionary history in Hydrobiidae relative to other major taxonomic groups (data from Grumbs et al. 2024; Forest et al. 2026).
+**FIGURE 5** Evolutionary distinctiveness (ED), extinction risk, and threatened evolutionary history in Hydrobiidae. (a) Augmented phylogeny of Hydrobiidae with branches colored according to ED values. Tip colors represent IUCN Red List categories, including both evaluated and model-predicted (5-class) classifications. Numbers at the dashed circles indicate the ages of speciation events in millions of years. (b) Estimated proportion of threatened evolutionary history in Hydrobiidae relative to other major taxonomic groups (data from [Grumbs et al. 2023](https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.3001991); [Forest et al. 2026](https://www.science.org/doi/10.1126/science.adz0773))
 
 ```{r}
 # Reset graphic device
